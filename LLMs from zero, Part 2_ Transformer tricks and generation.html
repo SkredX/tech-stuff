@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LLMs from zero, Part 2: Transformer tricks and generation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6FB; --paper:#FFFFFF; --ink:#16213A; --muted:#56617A; --line:#DCE2EE;
+  --blue:#2348C9; --blue-soft:#E4EAFB; --teal:#0B7F72; --teal-soft:#DDF3EF;
+  --warn:#B93D0A; --warn-soft:#FCEADC; --mark:#FFE36E; --mark-ink:#16213A;
+  --chip1:#E4EAFB; --chip2:#DDF3EF; --chip3:#FCEADC; --chip4:#F1E6FB; --chip5:#FFF3C4;
+  --sans:"IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1424; --paper:#151D31; --ink:#E6EBF5; --muted:#A0ABC2; --line:#2A3551;
+    --blue:#86A2FF; --blue-soft:#1E2A4F; --teal:#52D3C1; --teal-soft:#113A35;
+    --warn:#FF9A5C; --warn-soft:#3B2416; --mark:#6B5B12; --mark-ink:#FFF6CF;
+    --chip1:#1E2A4F; --chip2:#113A35; --chip3:#3B2416; --chip4:#2E1F45; --chip5:#3A3313;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1424; --paper:#151D31; --ink:#E6EBF5; --muted:#A0ABC2; --line:#2A3551;
+  --blue:#86A2FF; --blue-soft:#1E2A4F; --teal:#52D3C1; --teal-soft:#113A35;
+  --warn:#FF9A5C; --warn-soft:#3B2416; --mark:#6B5B12; --mark-ink:#FFF6CF;
+  --chip1:#1E2A4F; --chip2:#113A35; --chip3:#3B2416; --chip4:#2E1F45; --chip5:#3A3313;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 72px);scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.65}
+img,svg{max-width:100%}
+a{color:var(--blue)}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.wrap{max-width:1140px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px}
+nav.toc{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;padding:32px 0;max-height:100vh;overflow:auto;font-size:14px}
+nav.toc p{margin:0 0 6px;color:var(--muted);font-weight:500}
+nav.toc a{display:block;color:var(--ink);text-decoration:none;padding:4px 10px;border-left:2px solid var(--line)}
+nav.toc a:hover{border-left-color:var(--blue);color:var(--blue)}
+nav.toc .grp{margin-bottom:18px}
+main{max-width:780px;padding:40px 0 80px;min-width:0}
+h1{font-size:2.3rem;line-height:1.15;margin:0 0 12px;font-weight:600;letter-spacing:-.01em}
+h2{font-size:1.7rem;line-height:1.2;margin:72px 0 8px;font-weight:600;padding-top:24px;border-top:3px solid var(--ink)}
+h3{font-size:1.25rem;margin:44px 0 8px;font-weight:600}
+h4{font-size:1rem;margin:20px 0 6px;font-weight:600}
+.modnum{display:block;font-size:.95rem;color:var(--blue);font-weight:500;margin-bottom:4px}
+p{margin:0 0 14px}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.mark{background:linear-gradient(transparent 52%, var(--mark) 52%);color:inherit;padding:0 2px}
+code,.mono{font-family:var(--mono);font-size:.9em}
+:not(pre)>code{background:var(--blue-soft);padding:1px 5px;border-radius:4px}
+pre{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:16px;overflow-x:auto;font-size:14px;line-height:1.55}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px;margin:18px 0 24px}
+.panel .cap{font-size:14px;color:var(--muted);margin:10px 0 0}
+.remember{border:2px solid var(--ink);border-radius:4px;padding:14px 18px;margin:20px 0;background:var(--paper)}
+.remember b{display:block;margin-bottom:4px}
+.interview{border-left:4px solid var(--teal);background:var(--teal-soft);padding:14px 18px;margin:20px 0;border-radius:0}
+.interview b{color:var(--teal)}
+.trap{border-left:4px solid var(--warn);background:var(--warn-soft);padding:14px 18px;margin:20px 0;border-radius:0}
+.trap b{color:var(--warn)}
+.formula{font-family:var(--mono);font-size:1.25rem;text-align:center;padding:22px 12px;background:var(--paper);border:2px solid var(--ink);border-radius:4px;margin:18px 0;overflow-x:auto;white-space:nowrap}
+.tablewrap{overflow-x:auto;margin:14px 0 22px}
+table{border-collapse:collapse;width:100%;font-size:15px;background:var(--paper)}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:var(--blue-soft);font-weight:600}
+button{font:inherit;font-size:14px;color:var(--ink);background:var(--paper);border:1px solid var(--muted);border-radius:8px;padding:7px 14px;cursor:pointer}
+button:hover{border-color:var(--blue);color:var(--blue)}
+button.primary{background:var(--blue);color:var(--paper);border-color:var(--blue)}
+button.primary:hover{opacity:.9;color:var(--paper)}
+button.on{background:var(--blue-soft);border-color:var(--blue);color:var(--blue)}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+input[type=text]{font:inherit;width:100%;padding:10px 12px;border:1px solid var(--muted);border-radius:8px;background:var(--bg);color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--blue)}
+.bar-row{display:grid;grid-template-columns:110px minmax(0,1fr) 56px;gap:10px;align-items:center;font-size:14px;margin:5px 0}
+.track{height:16px;background:var(--bg);border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+.fill{height:100%;background:var(--blue);transition:width .3s}
+.fill.teal{background:var(--teal)}
+.fill.orange{background:var(--warn)}
+.chip{display:inline-block;padding:3px 7px;margin:3px 2px;border-radius:6px;font-family:var(--mono);font-size:14px;border:1px solid var(--line)}
+.c0{background:var(--chip1)}.c1{background:var(--chip2)}.c2{background:var(--chip3)}.c3{background:var(--chip4)}.c4{background:var(--chip5)}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+.stat{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:14px}
+.stat strong{font-size:20px;display:block}
+.ctx{font-size:1.3rem;margin:6px 0 14px}
+.ctx .blank{display:inline-block;min-width:60px;border-bottom:2px solid var(--blue);color:var(--blue)}
+.wordbtn{text-align:left}
+.rnn-row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.tokbox{padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);transition:background .2s,border-color .2s;font-family:var(--mono)}
+.tokbox.lit{background:var(--mark);border-color:var(--ink);color:var(--mark-ink)}
+.memory{font-family:var(--mono);font-size:14px;padding:10px;border:1px dashed var(--muted);border-radius:8px;min-height:44px}
+.qkv{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:14px}
+.qkv .col h4{margin:0 0 8px}
+.card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--bg)}
+.card.q{border-color:var(--blue);background:var(--blue-soft)}
+.score{float:right;font-family:var(--mono);font-weight:500}
+.shapes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;font-size:13px;text-align:center}
+.mat{border:2px solid var(--ink);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);background:var(--bg);padding:4px}
+.arrowtxt{color:var(--muted);font-size:20px}
+.step{display:none;padding:12px 0;border-top:1px dashed var(--line)}
+.step.show{display:block}
+.grid-mask{display:grid;gap:3px;font-size:12px;font-family:var(--mono)}
+.grid-mask div{padding:6px 2px;text-align:center;border-radius:3px}
+.gm-h{color:var(--muted)}
+.gm-ok{background:var(--teal-soft);color:var(--teal)}
+.gm-no{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.heads{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.hm{display:grid;gap:2px;font-size:11px;font-family:var(--mono)}
+.hm div{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:2px}
+.hm .lab{aspect-ratio:auto;color:var(--muted);overflow:hidden}
+.ngrid{display:grid;gap:1px;max-width:360px;margin:12px 0}
+.ngrid div{aspect-ratio:1;background:var(--blue);opacity:.75;border-radius:1px}
+svg text{font-family:var(--sans)}
+.sv-box{fill:var(--paper);stroke:var(--muted);stroke-width:1}
+.sv-attn{fill:var(--blue-soft);stroke:var(--blue);stroke-width:1.2}
+.sv-ffn{fill:var(--teal-soft);stroke:var(--teal);stroke-width:1.2}
+.sv-warm{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.2}
+.sv-cont{fill:none;stroke:var(--muted);stroke-dasharray:6 5;stroke-width:1}
+.sv-t{fill:var(--ink);font-size:15px;font-weight:600}
+.sv-s{fill:var(--muted);font-size:12.5px}
+.sv-l{fill:var(--ink);font-size:13px}
+.sv-arr{stroke:var(--ink);stroke-width:1.4;fill:none}
+.sv-res{stroke:var(--warn);stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+.sv-blue{stroke:var(--blue);stroke-width:2;fill:none}
+.sv-teal{stroke:var(--teal);stroke-width:2;fill:none}
+.dot-a{fill:var(--blue)}.dot-b{fill:var(--teal)}.dot-c{fill:var(--warn)}.dot-d{fill:var(--muted)}
+details{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:8px 0}
+details summary{cursor:pointer;font-weight:500}
+details[open] summary{margin-bottom:8px}
+.quiz .qq{margin:18px 0}
+.quiz .opts{display:grid;gap:6px;margin:8px 0}
+.quiz .opts button{text-align:left}
+.quiz .right{background:var(--teal-soft);border-color:var(--teal);color:var(--teal)}
+.quiz .wrong{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.quiz .why{font-size:14px;color:var(--muted)}
+.score-big{font-size:1.2rem;font-weight:600}
+footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:15px}
+.hero{padding:16px 0 8px}
+.daytag{display:inline-block;font-size:14px;font-weight:500;color:var(--blue);border:1px solid var(--blue);border-radius:999px;padding:2px 12px;margin-bottom:14px}
+@media (max-width:880px){
+  .wrap{grid-template-columns:1fr;gap:0;padding:0 16px}
+  nav.toc{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;padding-top:calc(10px + env(safe-area-inset-top,0px));margin-top:calc(-1 * env(safe-area-inset-top,0px));display:flex;gap:6px;overflow-x:auto;max-height:none;border-bottom:1px solid var(--line);white-space:nowrap}
+  nav.toc .grp{display:flex;gap:6px;margin:0}
+  nav.toc p{display:none}
+  nav.toc a{border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+  h1{font-size:1.8rem}
+  .qkv{grid-template-columns:1fr}
+  .heads{grid-template-columns:1fr}
+  .bar-row{grid-template-columns:84px minmax(0,1fr) 48px}
+}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:12px 0}
+.flow .fb{flex:1 1 140px;border:1.5px solid var(--ink);border-radius:8px;padding:10px 12px;background:var(--bg);font-size:14px}
+.flow .fb b{display:block;font-size:15px}
+.flow .fa{align-self:center;color:var(--muted);font-size:20px}
+.fb.blue{border-color:var(--blue);background:var(--blue-soft)}
+.fb.teal{border-color:var(--teal);background:var(--teal-soft)}
+.fb.warn{border-color:var(--warn);background:var(--warn-soft)}
+canvas{max-width:100%;display:block;border-radius:8px;border:1px solid var(--line)}
+.ctrl{display:grid;grid-template-columns:130px minmax(0,1fr) 64px;gap:10px;align-items:center;font-size:14px;margin:6px 0}
+.headgrid{display:grid;gap:6px;margin:10px 0}
+.hrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px}
+.hbox{width:34px;height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px}
+.hq{background:var(--blue-soft);border:1.5px solid var(--blue);color:var(--blue)}
+.hkv{background:var(--teal-soft);border:1.5px solid var(--teal);color:var(--teal)}
+.hlab{width:90px;color:var(--muted)}
+.chat{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--bg);font-size:14px;margin:8px 0}
+.msg{padding:8px 12px;border-radius:8px;margin:6px 0;max-width:92%}
+.msg.u{background:var(--blue-soft);margin-left:auto}
+.msg.a{background:var(--paper);border:1px solid var(--line)}
+.msg.t{background:var(--teal-soft);font-family:var(--mono);font-size:13px}
+.msg.s{background:var(--warn-soft);font-family:var(--mono);font-size:13px}
+.expert{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:70px;height:56px;margin:4px;border:1.5px solid var(--line);border-radius:8px;font-size:12px;background:var(--bg);transition:background .2s,border-color .2s}
+.expert.lit{background:var(--teal-soft);border-color:var(--teal);color:var(--teal)}
+.kvrow{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0;align-items:center;font-size:12px;font-family:var(--mono)}
+.kvc{padding:4px 7px;border-radius:4px;border:1px solid var(--line);background:var(--bg)}
+.kvc.new{background:var(--mark);color:var(--mark-ink);border-color:var(--ink)}
+.kvc.cached{background:var(--teal-soft);color:var(--teal);border-color:var(--teal)}
+.kvc.wasted{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+.loopbox{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (max-width:880px){.loopbox{grid-template-columns:1fr}.ctrl{grid-template-columns:96px minmax(0,1fr) 56px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <div class="grp"><p>Module 3</p>
+    <a href="#pos">Position</a><a href="#rope">RoPE</a><a href="#gqa">MHA, MQA, GQA</a><a href="#families">BERT vs GPT vs T5</a><a href="#approx">Cheaper attention</a>
+  </div>
+  <div class="grp"><p>Module 4</p>
+    <a href="#decode">Picking the next token</a><a href="#sampling">Temperature, top-k, top-p</a><a href="#kv">KV cache</a><a href="#moe">Mixture of experts</a><a href="#ctx">Context window</a><a href="#prompt">Prompting</a>
+  </div>
+  <div class="grp"><p>Revise</p>
+    <a href="#qa">Interview Q&amp;A</a><a href="#quiz">Quiz</a>
+  </div>
+</nav>
+
+<main>
+<section class="hero">
+  <span class="daytag">Part 2 of 4</span>
+  <h1>Transformer tricks, and how LLMs actually generate text</h1>
+  <p class="lede">Modules 3 and 4. How the model knows word order, how modern models save memory, which model family does what, and every knob that controls generation.</p>
+</section>
+
+<h2 id="m3"><span class="modnum">Module 3</span>Transformer tricks</h2>
+
+<h3 id="pos">3.1 Giving the model a sense of order</h3>
+<p>From Part 1: attention treats the input like a bag of words. "Dog bites man" and "man bites dog" look the same. So we must inject <b>position</b> somehow. There are three main ways.</p>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>How it works</th><th>Used in</th><th>Weakness</th></tr>
+<tr><td><b>Sinusoidal</b> (fixed)</td><td>Add a fixed wave pattern to each embedding. Each position gets a unique "barcode".</td><td>Original 2017 Transformer</td><td>Doesn't generalize well to longer texts than seen in training</td></tr>
+<tr><td><b>Learned absolute</b></td><td>A learned vector for position 0, 1, 2, … up to a max (e.g., 512), added to the embedding</td><td>BERT, GPT-2</td><td>Hard limit: there's no vector for position 513</td></tr>
+<tr><td><b>RoPE</b> (rotary)</td><td>Rotate the query and key vectors by an angle that depends on position</td><td>Llama, Mistral, Qwen, Gemma</td><td>Needs tricks to stretch beyond training length (but those tricks work well)</td></tr>
+</table></div>
+
+<h4>What the sinusoidal "barcode" looks like</h4>
+<div class="formula">PE(pos, 2i) = sin(pos / 10000^(2i/d)) &nbsp;&nbsp; PE(pos, 2i+1) = cos(pos / 10000^(2i/d))</div>
+<p>Each dimension is a wave with a different speed. Early dimensions wiggle fast, later ones slowly. Like the hands of a clock: the seconds hand moves fast, the hour hand slowly, and together they give every moment a unique reading.</p>
+<div class="panel">
+  <canvas id="pe-canvas" width="640" height="300" aria-label="Heatmap of sinusoidal positional encodings"></canvas>
+  <p class="cap">Rows = positions 0 to 49 (top to bottom). Columns = embedding dimensions 0 to 63. Blue = positive, orange = negative. Each row is different, so each position is unique.</p>
+</div>
+
+<h3 id="rope">3.2 RoPE: rotary position embeddings</h3>
+<p>RoPE is the method you must know, because almost every open model uses it. The idea: instead of <i>adding</i> a position vector, <b>rotate</b> the query and key vectors. A token at position m is rotated by angle m·θ.</p>
+<p>Why rotate? When you take the dot product of two rotated vectors, only the <b>difference</b> of their angles matters. So the attention score between two tokens depends on <span class="mark">how far apart they are (m − n), not where they sit in the text.</span> That's exactly what we want: "the word 2 places back" should mean the same thing at the start or the end of a document.</p>
+<div class="panel">
+  <svg id="rope-svg" viewBox="0 0 600 300" role="img" aria-label="Query and key vectors rotating with position"></svg>
+  <div class="ctrl"><span>Query position m</span><input type="range" id="rope-m" min="0" max="12" step="1" value="5"><span id="rope-mv" class="mono">5</span></div>
+  <div class="ctrl"><span>Key position n</span><input type="range" id="rope-n" min="0" max="12" step="1" value="2"><span id="rope-nv" class="mono">2</span></div>
+  <div class="ctrl"><span>Shift both by</span><input type="range" id="rope-s" min="0" max="12" step="1" value="0"><span id="rope-sv" class="mono">0</span></div>
+  <div class="stats"><div class="stat"><strong id="rope-gap">3</strong>distance m − n</div><div class="stat"><strong id="rope-dot">0</strong>attention score q·k</div></div>
+  <p class="cap">Drag "shift both": the two arrows spin together, but the angle between them, and so the score, stays exactly the same. Change m or n and the score changes.</p>
+</div>
+<p>In a real model, the vector is split into pairs of numbers, and each pair is rotated at a different speed (like the sinusoidal waves). RoPE is applied to <b>Q and K only</b>, not to V, and it's applied inside every attention layer.</p>
+<div class="interview"><b>Interview follow-up: "How do models extend context from 4k to 128k?"</b> Since RoPE uses angles, you can squeeze positions so that longer texts fit into the angle range seen in training. Names to drop: <b>position interpolation</b>, <b>NTK-aware scaling</b>, and <b>YaRN</b>, usually followed by a short fine-tune on long documents. Another option is <b>ALiBi</b>, which skips position vectors and just subtracts a penalty from attention scores that grows with distance.</div>
+
+<h3 id="gqa">3.3 MHA vs MQA vs GQA: saving memory at inference</h3>
+<p>When an LLM generates text, it stores the keys and values of all previous tokens so it doesn't recompute them (the <b>KV cache</b>, explained fully in 4.3). With many heads and long context, this cache gets huge. The fix: let several query heads <b>share</b> the same key and value heads.</p>
+<div class="panel">
+  <div class="btnrow"><button id="g-mha" onclick="setG('mha')">MHA</button><button id="g-gqa" onclick="setG('gqa')">GQA</button><button id="g-mqa" onclick="setG('mqa')">MQA</button></div>
+  <div class="headgrid" id="g-heads"></div>
+  <p id="g-desc" style="font-size:15px;margin:8px 0 0"></p>
+</div>
+<div class="tablewrap"><table>
+<tr><th></th><th>Multi-head (MHA)</th><th>Grouped-query (GQA)</th><th>Multi-query (MQA)</th></tr>
+<tr><td>K/V heads</td><td>One per query head</td><td>One per group (e.g., 8 groups)</td><td>Just one, shared by all</td></tr>
+<tr><td>KV cache size</td><td>Largest</td><td>Medium</td><td>Smallest</td></tr>
+<tr><td>Quality</td><td>Best</td><td>Almost as good as MHA</td><td>Slight drop</td></tr>
+<tr><td>Used in</td><td>Original Transformer, GPT-2</td><td>Llama 2 70B, Llama 3, Mistral</td><td>PaLM, Falcon</td></tr>
+</table></div>
+
+<h4>KV cache calculator</h4>
+<div class="formula">KV cache = 2 × layers × KV heads × head size × tokens × bytes</div>
+<p>The 2 is because we store both K and V. Bytes is 2 for FP16/BF16.</p>
+<div class="panel">
+  <div class="ctrl"><span>Layers</span><input type="range" id="kv-l" min="12" max="96" step="4" value="32"><span id="kv-lv" class="mono">32</span></div>
+  <div class="ctrl"><span>Context (tokens)</span><input type="range" id="kv-t" min="0" max="7" step="1" value="2"><span id="kv-tv" class="mono">4k</span></div>
+  <div class="ctrl"><span>Batch (users)</span><input type="range" id="kv-b" min="1" max="64" step="1" value="1"><span id="kv-bv" class="mono">1</span></div>
+  <div id="kv-bars"></div>
+  <p class="cap">32 query heads, head size 128, FP16. GQA here uses 8 KV heads.</p>
+</div>
+
+<h3 id="families">3.4 The three model families</h3>
+<p>After 2017, people kept only one half of the Transformer (or both). Each family is trained differently and is good at different jobs.</p>
+<div class="tablewrap"><table>
+<tr><th></th><th>Encoder-only</th><th>Decoder-only</th><th>Encoder–decoder</th></tr>
+<tr><td>Examples</td><td>BERT, RoBERTa, DistilBERT</td><td>GPT, Llama, Claude, Mistral</td><td>T5, BART</td></tr>
+<tr><td>Attention</td><td>Bidirectional: sees both sides</td><td>Causal: sees only the left</td><td>Encoder bidirectional, decoder causal + cross-attention</td></tr>
+<tr><td>Training task</td><td>Masked language modeling: fill in hidden words</td><td>Predict the next token</td><td>Rebuild corrupted spans of text</td></tr>
+<tr><td>Best at</td><td>Understanding: classification, NER, search embeddings</td><td>Generating anything; chat; general-purpose</td><td>Input → output tasks: translation, summarization</td></tr>
+</table></div>
+
+<h4>How BERT is trained: masked language modeling (MLM)</h4>
+<p>Hide 15% of the words and ask the model to guess them using context on <b>both</b> sides. Toggle below to see why seeing both sides matters.</p>
+<div class="panel">
+  <div class="btnrow"><button id="mlm-both" class="on" onclick="setMLM(true)">BERT: sees both sides</button><button id="mlm-left" onclick="setMLM(false)">GPT: sees only the left</button></div>
+  <div class="ctx" id="mlm-ctx"></div>
+  <div id="mlm-bars"></div>
+</div>
+<p>Of the chosen 15%: 80% are replaced with <code>[MASK]</code>, 10% with a random word, and 10% left unchanged. This stops the model from only learning to handle the <code>[MASK]</code> symbol, which never appears in real use. Original BERT also had a second task, <b>next sentence prediction (NSP)</b>: are these two sentences consecutive? A special <code>[CLS]</code> token at the start collects a summary of the whole input for classification.</p>
+<div class="tablewrap"><table>
+<tr><th>BERT variant</th><th>What changed</th></tr>
+<tr><td>RoBERTa</td><td>Dropped NSP (it didn't help), trained longer on more data, and changed which words are masked every epoch (dynamic masking)</td></tr>
+<tr><td>DistilBERT</td><td>A smaller student model trained to copy BERT (knowledge distillation): about 40% smaller, 60% faster, keeps about 97% of the performance</td></tr>
+<tr><td>ALBERT</td><td>Shares weights across layers to cut parameters</td></tr>
+</table></div>
+<div class="interview"><b>"Why did decoder-only models win?"</b> One simple objective (next token) works on any text with no labels, it scales smoothly with more data and compute, and a single model can do any task just by being prompted. Encoders still win for cheap, fast embeddings and classification.</div>
+
+<h3 id="approx">3.5 Making attention cheaper</h3>
+<p>Full attention is O(n²). Some designs limit which tokens each token looks at:</p>
+<div class="tablewrap"><table>
+<tr><th>Idea</th><th>Plain words</th><th>Example</th></tr>
+<tr><td>Sliding window</td><td>Each token only looks at the last W tokens (e.g., 4,096). Stacking layers still lets information travel far.</td><td>Mistral 7B, Longformer</td></tr>
+<tr><td>Sparse / global tokens</td><td>Mostly local attention, plus a few special tokens that see everything</td><td>Longformer, BigBird</td></tr>
+<tr><td>Linear attention</td><td>Rewrites the math to avoid the n × n table, at some quality cost</td><td>Research models</td></tr>
+</table></div>
+<p>Don't confuse these with <b>FlashAttention</b> (Part 3): it computes the exact same full attention, just with smarter memory use.</p>
+
+<details><summary>Check yourself: why does RoPE make the score depend only on distance?</summary>Both vectors are rotated by their own position's angle. The dot product depends on the angle between them, which is (m − n)·θ. Shift both positions by the same amount and the angle between them doesn't change.</details>
+
+<!-- MODULE 4 -->
+<h2 id="m4"><span class="modnum">Module 4</span>How LLMs generate text</h2>
+
+<h3 id="decode">4.1 From scores to a word</h3>
+<p>At each step the model outputs one raw score per vocabulary word. These are called <b>logits</b>. Softmax turns them into probabilities. Then a <b>decoding strategy</b> picks one word.</p>
+<div class="flow">
+  <div class="fb"><b>Logits</b>raw scores, any number</div><div class="fa">→</div>
+  <div class="fb blue"><b>Softmax</b>probabilities that sum to 1</div><div class="fa">→</div>
+  <div class="fb teal"><b>Decoding</b>greedy, beam, or sampling</div><div class="fa">→</div>
+  <div class="fb warn"><b>Next token</b>added to input, repeat</div>
+</div>
+<div class="tablewrap"><table>
+<tr><th>Strategy</th><th>How</th><th>Good for</th><th>Problem</th></tr>
+<tr><td><b>Greedy</b></td><td>Always take the top word</td><td>Fast, deterministic answers</td><td>Repetitive, can miss better sentences</td></tr>
+<tr><td><b>Beam search</b></td><td>Keep the B best partial sentences at each step, pick the best full one</td><td>Translation, short exact outputs</td><td>Bland and repetitive for open-ended chat; slower</td></tr>
+<tr><td><b>Sampling</b></td><td>Pick randomly, following the probabilities</td><td>Chat, creative writing</td><td>Can pick silly low-probability words, so we filter (below)</td></tr>
+</table></div>
+
+<h3 id="sampling">4.2 Temperature, top-k, top-p: play with all three</h3>
+<div class="formula">pᵢ = exp(zᵢ / T) / Σⱼ exp(zⱼ / T)</div>
+<p><b>Temperature T</b> divides the logits before softmax. Low T makes the top word dominate (confident, boring). High T flattens everything (creative, risky). T → 0 is the same as greedy.</p>
+<p><b>Top-k</b> keeps only the k most likely words. <b>Top-p</b> (nucleus sampling) keeps the smallest set of top words whose probabilities add up to at least p. Then the kept probabilities are rescaled to sum to 1.</p>
+<div class="panel">
+  <div class="ctx">The weather today is <span class="blank">&nbsp;?&nbsp;</span></div>
+  <div class="ctrl"><span>Temperature</span><input type="range" id="s-t" min="0.1" max="2" step="0.1" value="1"><span id="s-tv" class="mono">1.0</span></div>
+  <div class="ctrl"><span>Top-k</span><input type="range" id="s-k" min="1" max="8" step="1" value="8"><span id="s-kv" class="mono">8</span></div>
+  <div class="ctrl"><span>Top-p</span><input type="range" id="s-p" min="0.1" max="1" step="0.05" value="1"><span id="s-pv" class="mono">1.00</span></div>
+  <div id="s-bars"></div>
+  <div class="btnrow"><button class="primary" onclick="sampleTen()">Sample 10 times</button></div>
+  <div id="s-out" style="font-family:var(--mono);font-size:14px;min-height:24px"></div>
+  <p class="cap">Faded bars are filtered out. Try T = 2 with top-p = 1 (you'll see "banana"), then top-p = 0.8 (the nonsense disappears).</p>
+</div>
+<div class="interview"><b>"Top-k vs top-p?"</b> Top-k always keeps exactly k words, even when the model is very sure (then k is too many) or very unsure (then k is too few). Top-p adapts: when the model is sure, the nucleus is 1 or 2 words; when unsure, it grows. Typical chat settings: T ≈ 0.7, top-p ≈ 0.9. For code or facts, use low temperature.</div>
+
+<h3 id="kv">4.3 The KV cache: why generation doesn't redo everything</h3>
+<p>To generate token 100, attention needs the keys and values of tokens 1 to 99. But those didn't change since the last step. So we <b>save them</b> and only compute K and V for the one new token.</p>
+<div class="panel">
+  <div class="btnrow"><button class="primary" onclick="kvStep()">Generate next token</button><button onclick="kvReset()">Reset</button></div>
+  <h4>Without cache</h4><div id="kv-no"></div>
+  <h4>With KV cache</h4><div id="kv-yes"></div>
+  <div class="stats"><div class="stat"><strong id="kv-c1">0</strong>K/V computations without cache</div><div class="stat"><strong id="kv-c2">0</strong>with cache</div></div>
+  <p class="cap">Orange = recomputed for no reason. Green = read from cache. Yellow = new work.</p>
+</div>
+<div class="tablewrap"><table>
+<tr><th>Phase</th><th>What happens</th><th>Bottleneck</th></tr>
+<tr><td><b>Prefill</b></td><td>The whole prompt is processed at once, filling the cache</td><td>Compute (lots of math in parallel). Sets the <b>time to first token</b>.</td></tr>
+<tr><td><b>Decode</b></td><td>One new token per step, reading the whole cache each time</td><td>Memory bandwidth (moving the cache and weights). Sets <b>tokens per second</b>.</td></tr>
+</table></div>
+<p>The cost: memory. That's why GQA (3.3) and tricks like <b>PagedAttention</b> (used in vLLM, stores the cache in small pages like an operating system) matter.</p>
+
+<h3 id="moe">4.4 Mixture of experts (MoE)</h3>
+<p>In an MoE model, the single feed-forward network in each block is replaced by many smaller ones called <b>experts</b>. A small <b>router</b> looks at each token and sends it to only the top few experts (often 2 out of 8). Click a token:</p>
+<div class="panel">
+  <div class="btnrow" id="moe-toks"></div>
+  <div id="moe-experts"></div>
+  <p id="moe-desc" style="font-size:14px;color:var(--muted);margin:8px 0 0"></p>
+</div>
+<div class="remember"><b>The key idea: total vs active parameters</b>Mixtral 8×7B has about 47B parameters in total, but each token only uses about 13B of them. You get the knowledge capacity of a big model at the speed of a smaller one. The catch: all 47B still have to fit in memory.</div>
+<p>One more detail interviewers like: without care, the router sends everything to one or two favorite experts. A <b>load-balancing loss</b> during training pushes it to spread tokens evenly.</p>
+
+<h3 id="ctx">4.5 Context window</h3>
+<p>The <b>context window</b> is the maximum number of tokens (prompt + answer) the model can handle at once. It's limited by attention cost (O(n²)), KV cache memory, and what position lengths the model was trained on.</p>
+<div class="trap"><b>Trap: "Bigger context means the model uses all of it well."</b> Not always. Studies found a "lost in the middle" effect: models use information at the start and end of a long prompt better than information in the middle. Put the most important instructions and facts at the start or end.</div>
+
+<h3 id="prompt">4.6 Prompting: getting better answers without training</h3>
+<div class="tablewrap"><table>
+<tr><th>Technique</th><th>What you do</th><th>Example</th></tr>
+<tr><td><b>Zero-shot</b></td><td>Just ask</td><td>"Classify this review as positive or negative: …"</td></tr>
+<tr><td><b>Few-shot</b> (in-context learning)</td><td>Show a few solved examples in the prompt first</td><td>Three labeled reviews, then the new one</td></tr>
+<tr><td><b>Chain of thought (CoT)</b></td><td>Ask the model to reason step by step before answering</td><td>"Let's think step by step."</td></tr>
+<tr><td><b>Self-consistency</b></td><td>Sample several reasoning paths (with temperature > 0) and take the most common final answer</td><td>Majority vote over 5 to 40 samples</td></tr>
+</table></div>
+<div class="remember"><b>In-context learning changes no weights</b>The model "learns" from examples in the prompt only for that one request. Nothing is saved. This surprised researchers when GPT-3 showed it (2020), and it's a favorite interview question.</div>
+<p><b>Why does CoT help?</b> Each generated token gets the same fixed amount of computation. Writing out steps gives the model more tokens, so more computation, and each step can build on the previous one written in the context.</p>
+
+<h4>Self-consistency demo</h4>
+<div class="panel">
+  <p style="margin:0 0 8px"><b>Question:</b> Pens cost ₹12 each. Riya buys 3 and pays with ₹50. How much change does she get?</p>
+  <div class="btnrow"><button class="primary" onclick="scRun()">Sample 5 reasoning paths</button></div>
+  <div id="sc-out"></div>
+  <p id="sc-vote" style="font-weight:600;margin:8px 0 0"></p>
+  <p class="cap">Any single sample can be wrong. The majority is usually right, because correct reasoning tends to converge on the same answer while mistakes scatter.</p>
+</div>
+
+<!-- REVISE -->
+<h2 id="qa"><span class="modnum">Revise</span>Interview answers</h2>
+<details><summary>Why do we need positional encodings?</summary>Attention is permutation-invariant: it treats the input as an unordered set. Without position information, word order is invisible.</details>
+<details><summary>What is RoPE and why is it popular?</summary>It rotates query and key vectors by an angle proportional to position. The dot product then depends only on relative distance. It needs no extra parameters and can be stretched to longer contexts with interpolation tricks.</details>
+<details><summary>Explain MQA and GQA.</summary>MQA: all query heads share one K/V head. GQA: query heads are split into groups and each group shares a K/V head. Both shrink the KV cache and speed up decoding; GQA keeps quality close to full multi-head attention.</details>
+<details><summary>BERT vs GPT?</summary>BERT is encoder-only, bidirectional, trained with masked language modeling; great for understanding tasks and embeddings. GPT is decoder-only, causal, trained on next-token prediction; great for generation.</details>
+<details><summary>What does temperature do?</summary>Divides logits before softmax. Below 1 sharpens the distribution (more deterministic); above 1 flattens it (more random). T → 0 equals greedy.</details>
+<details><summary>Top-k vs top-p?</summary>Top-k keeps a fixed number of candidates. Top-p keeps the smallest set whose probabilities sum to p, so it adapts to how confident the model is.</details>
+<details><summary>What is the KV cache and what's its downside?</summary>It stores keys and values of past tokens so each new token only computes its own. It turns repeated work into memory use, and that memory grows with layers, heads, context length, and batch size.</details>
+<details><summary>Prefill vs decode?</summary>Prefill processes the prompt in parallel (compute-bound, sets time to first token). Decode generates one token at a time (memory-bandwidth-bound, sets tokens per second).</details>
+<details><summary>What is a mixture of experts?</summary>The FFN is replaced by many experts and a router that sends each token to the top-k of them. Total parameters are large but active parameters per token are small. Needs a load-balancing loss.</details>
+<details><summary>What is in-context learning?</summary>The model performs a new task from examples given in the prompt, with no weight updates.</details>
+<details><summary>Chain of thought vs self-consistency?</summary>CoT asks for step-by-step reasoning in one answer. Self-consistency samples many CoT answers and takes a majority vote on the final result.</details>
+
+<h2 id="quiz"><span class="modnum">Test</span>Quick quiz</h2>
+<div class="quiz" id="quiz"></div>
+<p class="score-big" id="quiz-score"></p>
+
+<footer>Next up: Part 3, Modules 5 and 6 — pretraining, scaling laws, quantization, FlashAttention, LoRA, RLHF, DPO, and reasoning models. Based on Stanford CME 295 (Autumn 2025), Lectures 2 and 3.</footer>
+</main>
+
+</div>
+<script>
+function softmax(arr){const f=arr.filter(x=>isFinite(x));const m=Math.max(...f);const e=arr.map(x=>isFinite(x)?Math.exp(x-m):0);const z=e.reduce((a,b)=>a+b,0);return e.map(x=>x/z);}
+function pct(x){return x<0.01&&x>0?(x*100).toFixed(1)+'%':Math.round(x*100)+'%';}
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function $(id){return document.getElementById(id);}
+function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function bar(label,v,max,cls,right,dim){return '<div class="bar-row"><span style="color:'+(dim?'var(--muted)':'var(--ink)')+'">'+label+'</span><div class="track"><div class="fill '+(cls||'')+'" style="width:'+(max?Math.max(0,v/max*100):0).toFixed(1)+'%;'+(dim?'opacity:.25':'')+'"></div></div><span class="mono" style="color:var(--muted)">'+right+'</span></div>';}
+function makeQuiz(QZ,boxId,scoreId,nextMsg){
+  let sc=0,an=0;const done={};
+  $(boxId).innerHTML=QZ.map((x,i)=>'<div class="qq panel"><b>'+(i+1)+'. '+x.q+'</b><div class="opts">'+x.o.map((o,j)=>'<button id="'+boxId+i+'o'+j+'" data-i="'+i+'" data-j="'+j+'">'+o+'</button>').join('')+'</div><div class="why" id="'+boxId+i+'w"></div></div>').join('');
+  $(boxId).addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(!b)return;const i=+b.dataset.i,j=+b.dataset.j;if(done[i])return;done[i]=true;an++;const x=QZ[i];
+    $(boxId+i+'o'+x.a).classList.add('right');if(j!==x.a)b.classList.add('wrong');else sc++;
+    $(boxId+i+'w').textContent=(j===x.a?'Correct. ':'Not quite. ')+x.w;
+    $(scoreId).textContent='Score: '+sc+' / '+an+(an===QZ.length?(sc>=QZ.length-1?'. '+nextMsg:'. Re-read the sections you missed, then move on.'):'');});
+}
+
+/* sinusoidal PE heatmap */
+function peDraw(){
+  const c=$('pe-canvas');const ctx=c.getContext('2d');const P=50,D=64,cw=c.width/D,ch=c.height/P;
+  ctx.fillStyle=cssv('--paper');ctx.fillRect(0,0,c.width,c.height);
+  const pos=cssv('--blue'),neg=cssv('--warn');
+  for(let p=0;p<P;p++)for(let d=0;d<D;d++){
+    const i=Math.floor(d/2);const ang=p/Math.pow(10000,2*i/D);const v=d%2===0?Math.sin(ang):Math.cos(ang);
+    ctx.globalAlpha=Math.abs(v);ctx.fillStyle=v>=0?pos:neg;ctx.fillRect(d*cw,p*ch,cw+0.5,ch+0.5);}
+  ctx.globalAlpha=1;
+}
+peDraw();
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',peDraw);
+
+/* RoPE */
+function ropeDraw(){
+  const m=+$('rope-m').value,n=+$('rope-n').value,s=+$('rope-s').value;
+  $('rope-mv').textContent=m;$('rope-nv').textContent=n;$('rope-sv').textContent=s;
+  const th=20,cx=170,cy=150,R=110;
+  const qa=(10+(m+s)*th)*Math.PI/180,ka=(60+(n+s)*th)*Math.PI/180;
+  const qx=cx+R*Math.cos(qa),qy=cy-R*Math.sin(qa),kx=cx+0.85*R*Math.cos(ka),ky=cy-0.85*R*Math.sin(ka);
+  let diff=((10+m*th)-(60+n*th))%360;if(diff>180)diff-=360;if(diff<-180)diff+=360;
+  const dot=1.2*1.0*Math.cos(diff*Math.PI/180);
+  $('rope-svg').innerHTML='<defs><marker id="ra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1L9 5L1 9" fill="none" stroke="context-stroke" stroke-width="1.8"/></marker></defs>'+
+  '<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="var(--line)" stroke-dasharray="4 4"/>'+
+  '<line x1="'+(cx-R-10)+'" y1="'+cy+'" x2="'+(cx+R+10)+'" y2="'+cy+'" stroke="var(--line)"/><line x1="'+cx+'" y1="'+(cy-R-10)+'" x2="'+cx+'" y2="'+(cy+R+10)+'" stroke="var(--line)"/>'+
+  '<line x1="'+cx+'" y1="'+cy+'" x2="'+qx.toFixed(1)+'" y2="'+qy.toFixed(1)+'" class="sv-blue" stroke-width="3" marker-end="url(#ra)"/>'+
+  '<line x1="'+cx+'" y1="'+cy+'" x2="'+kx.toFixed(1)+'" y2="'+ky.toFixed(1)+'" class="sv-teal" stroke-width="3" marker-end="url(#ra)"/>'+
+  '<text x="340" y="90" class="sv-t" style="fill:var(--blue)">q = query at position '+(m+s)+'</text>'+
+  '<text x="340" y="118" class="sv-t" style="fill:var(--teal)">k = key at position '+(n+s)+'</text>'+
+  '<text x="340" y="160" class="sv-l">Angle between them: '+Math.abs(Math.round(diff))+'°</text>'+
+  '<text x="340" y="184" class="sv-s">Each position step rotates a vector by 20°</text>';
+  $('rope-gap').textContent=m-n;$('rope-dot').textContent=dot.toFixed(2);
+}
+['rope-m','rope-n','rope-s'].forEach(id=>$(id).addEventListener('input',ropeDraw));ropeDraw();
+
+/* GQA */
+const GDESC={mha:'Multi-head: 8 query heads, 8 K/V heads. Every query head has its own keys and values. Biggest cache.',
+gqa:'Grouped-query: 8 query heads in 2 groups of 4. Each group shares one K/V head, so the cache is 4× smaller.',
+mqa:'Multi-query: all 8 query heads share a single K/V head. Cache is 8× smaller, with a small quality drop.'};
+function setG(mode){
+  ['mha','gqa','mqa'].forEach(x=>$('g-'+x).classList.toggle('on',x===mode));
+  const kv=mode==='mha'?8:mode==='gqa'?2:1;const per=8/kv;let h='<div style="display:flex;flex-wrap:wrap;gap:10px">';
+  for(let g=0;g<kv;g++){h+='<div style="border:1px dashed var(--muted);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px;align-items:center"><div class="hrow">';
+    for(let q=0;q<per;q++)h+='<div class="hbox hq">Q'+(g*per+q+1)+'</div>';
+    h+='</div><div class="hrow"><div class="hbox hkv" style="width:'+(per>1?Math.min(per*40-6,154):34)+'px">KV'+(g+1)+'</div></div></div>';}
+  $('g-heads').innerHTML=h+'</div>';$('g-desc').textContent=GDESC[mode];
+}
+setG('gqa');
+const KVT=[1024,2048,4096,8192,16384,32768,65536,131072];
+function kvCalc(){
+  const L=+$('kv-l').value,T=KVT[+$('kv-t').value],B=+$('kv-b').value;
+  $('kv-lv').textContent=L;$('kv-tv').textContent=(T/1024)+'k';$('kv-bv').textContent=B;
+  const gb=h=>2*L*h*128*T*2*B/1e9;const v=[['MHA (32)',gb(32)],['GQA (8)',gb(8)],['MQA (1)',gb(1)]];
+  $('kv-bars').innerHTML=v.map(([l,x])=>bar(l,x,v[0][1],'teal',(x<10?x.toFixed(2):Math.round(x))+' GB')).join('');
+}
+['kv-l','kv-t','kv-b'].forEach(id=>$(id).addEventListener('input',kvCalc));kvCalc();
+
+/* MLM */
+function setMLM(both){
+  $('mlm-both').classList.toggle('on',both);$('mlm-left').classList.toggle('on',!both);
+  $('mlm-ctx').innerHTML='The chef <span class="blank">&nbsp;[MASK]&nbsp;</span> '+(both?'the soup and served it hot.':'<span style="color:var(--line)">the soup and served it hot.</span>');
+  const d=both?[['cooked',.52],['made',.21],['tasted',.11],['stirred',.09],['burned',.04]]:[['is',.25],['was',.20],['said',.14],['cooked',.05],['and',.05]];
+  $('mlm-bars').innerHTML=d.map(([w,p])=>bar(w,p,d[0][1],'',pct(p))).join('')+'<p class="cap">'+(both?'Seeing "the soup and served it hot" makes "cooked" the clear winner.':'With only "The chef" to go on, the guess is vague. Right-side context is what makes BERT strong at understanding.')+'</p>';
+}
+setMLM(true);
+
+/* sampling */
+const SW=[['sunny',3.0],['cloudy',2.4],['rainy',2.0],['nice',1.8],['hot',1.2],['perfect',0.9],['purple',-1.0],['banana',-2.0]];
+let sFinal=[];
+function sCalc(){
+  const T=+$('s-t').value,k=+$('s-k').value,p=+$('s-p').value;
+  $('s-tv').textContent=T.toFixed(1);$('s-kv').textContent=k;$('s-pv').textContent=p.toFixed(2);
+  const pr=softmax(SW.map(x=>x[1]/T));const idx=pr.map((v,i)=>i).sort((a,b)=>pr[b]-pr[a]);
+  const keep=new Set();let cum=0;
+  for(let r=0;r<idx.length&&r<k;r++){if(cum>=p)break;keep.add(idx[r]);cum+=pr[idx[r]];}
+  const z=[...keep].reduce((a,i)=>a+pr[i],0);sFinal=pr.map((v,i)=>keep.has(i)?v/z:0);
+  const mx=Math.max(...sFinal);
+  $('s-bars').innerHTML=SW.map(([w],i)=>keep.has(i)?bar(w,sFinal[i],mx,'',pct(sFinal[i])):bar(w,pr[i],mx,'','cut',true)).join('');
+}
+function sampleTen(){const out=[];for(let n=0;n<10;n++){let r=Math.random(),i=0;for(;i<sFinal.length;i++){r-=sFinal[i];if(r<=0)break;}out.push(SW[Math.min(i,SW.length-1)][0]);}$('s-out').textContent=out.join(', ');}
+['s-t','s-k','s-p'].forEach(id=>$(id).addEventListener('input',sCalc));sCalc();
+
+/* KV cache stepper */
+const KW=["The","cat","sat","on","the","mat","and","slept"];let kvT=0;
+function kvRender(){
+  if(kvT===0){$('kv-no').innerHTML=$('kv-yes').innerHTML='<div class="kvrow" style="color:var(--muted)">Press "Generate next token".</div>';}
+  else{
+    let a='<div class="kvrow">',b='<div class="kvrow">';
+    for(let i=0;i<kvT;i++){const last=i===kvT-1;a+='<span class="kvc '+(last?'new':'wasted')+'">'+KW[i]+'</span>';b+='<span class="kvc '+(last?'new':'cached')+'">'+KW[i]+'</span>';}
+    $('kv-no').innerHTML=a+'</div>';$('kv-yes').innerHTML=b+'</div>';}
+  $('kv-c1').textContent=kvT*(kvT+1)/2;$('kv-c2').textContent=kvT;
+}
+function kvStep(){if(kvT<KW.length)kvT++;kvRender();}
+function kvReset(){kvT=0;kvRender();}
+kvRender();
+
+/* MoE */
+const MT={"The":[[0,.6],[3,.4]],"protein":[[2,.7],[5,.3]],"folds":[[2,.55],[6,.45]],"def":[[4,.8],[7,.2]],"print(":[[4,.6],[7,.4]],"₹50":[[1,.65],[6,.35]]};
+function moePick(t){
+  const r=MT[t];const lit={};r.forEach(([e,w])=>lit[e]=w);
+  $('moe-toks').innerHTML=Object.keys(MT).map(x=>'<button class="'+(x===t?'on':'')+'" data-t="'+x+'">'+x+'</button>').join('');
+  let h='';for(let e=0;e<8;e++)h+='<div class="expert'+(lit[e]!==undefined?' lit':'')+'"><b>Expert '+(e+1)+'</b>'+(lit[e]!==undefined?Math.round(lit[e]*100)+'%':'idle')+'</div>';
+  $('moe-experts').innerHTML=h;
+  $('moe-desc').textContent='The router sent "'+t+'" to experts '+(r[0][0]+1)+' and '+(r[1][0]+1)+', and their outputs are mixed using those weights. The other 6 experts did no work for this token. (Real experts don\'t split neatly by topic like "code" or "biology"; they tend to specialize in token patterns.)';
+}
+$('moe-toks').addEventListener('click',e=>{const b=e.target.closest('button[data-t]');if(b)moePick(b.dataset.t);});
+moePick('protein');
+
+/* self-consistency */
+const SCP=[[.33,'3 × 12 = 36. Change = 50 − 36 = 14.',14],[.27,'12 + 12 + 12 = 36. 50 − 36 = 14.',14],[.22,'3 × 12 = 26. 50 − 26 = 24.',24],[.18,'She pays 50 for a ₹12 pen: 50 − 12 = 38.',38]];
+function scRun(){
+  const picks=[];for(let n=0;n<5;n++){let r=Math.random(),i=0;for(;i<SCP.length;i++){r-=SCP[i][0];if(r<=0)break;}picks.push(SCP[Math.min(i,3)]);}
+  $('sc-out').innerHTML=picks.map((p,i)=>'<div class="card" style="margin:6px 0">Path '+(i+1)+': '+p[1]+' <span class="score" style="color:'+(p[2]===14?'var(--teal)':'var(--warn)')+'">₹'+p[2]+'</span></div>').join('');
+  const cnt={};picks.forEach(p=>cnt[p[2]]=(cnt[p[2]]||0)+1);const best=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
+  $('sc-vote').textContent='Majority vote: ₹'+best+' ('+cnt[best]+' of 5 paths)'+(best==='14'?'. Correct.':'. Unlucky draw; with more samples the vote gets more reliable.');
+}
+
+makeQuiz([
+ {q:"RoPE is applied to:",o:["Q, K and V","Only Q and K","Only the input embeddings","Only the output logits"],a:1,w:"RoPE rotates queries and keys so their dot product encodes relative distance. Values aren't rotated."},
+ {q:"GQA mainly reduces:",o:["Training data needed","The size of the KV cache","The vocabulary size","The number of layers"],a:1,w:"Query heads share K/V heads, so far fewer keys and values are stored per token."},
+ {q:"Which model is encoder-only?",o:["GPT-4","Llama 3","BERT","T5"],a:2,w:"BERT is encoder-only with bidirectional attention. T5 is encoder–decoder; GPT and Llama are decoder-only."},
+ {q:"Setting temperature very close to 0 is equivalent to:",o:["Beam search","Greedy decoding","Top-p = 1","Uniform random sampling"],a:1,w:"Dividing logits by a tiny T makes the top token's probability approach 1."},
+ {q:"With top-p = 0.9, the model keeps:",o:["The 9 most likely tokens","The smallest set of top tokens whose probabilities sum to at least 0.9","Tokens with probability above 0.9","90% of the vocabulary"],a:1,w:"Nucleus sampling picks a variable number of tokens depending on confidence."},
+ {q:"The decode phase of generation is usually limited by:",o:["Compute","Memory bandwidth","Tokenizer speed","Disk space"],a:1,w:"Each new token does little math but must read all weights and the whole KV cache."},
+ {q:"Mixtral 8×7B uses about how many parameters per token?",o:["7B","13B","47B","56B"],a:1,w:"2 of 8 experts are active per token, about 13B active out of about 47B total (attention layers are shared, so it's not 8 × 7)."},
+ {q:"In-context learning updates the model's weights.",o:["True","False"],a:1,w:"It only uses examples in the prompt for that request. Nothing is saved."}
+],'quiz','quiz-score','Strong. Ready for Part 3.');
+
+</script>
+</body>
+</html>

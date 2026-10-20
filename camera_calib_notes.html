@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Camera Calibration — Complete Study Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},svg:{fontCache:'global'},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};
+</script>
+<script id="MathJax-script" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+<style>
+  :root{
+    --paper:#f4efe6;--paper-2:#ece4d6;--card:#fbf8f1;--ink:#221d18;--ink-soft:#4b4239;
+    --rule:#d8ccb8;--accent:#8a2b1e;--accent-2:#1f5c54;--gold:#b8862f;--blue:#2f5d8a;
+    --purple:#6b3fa0;--shadow:rgba(60,42,20,.16);--maxw:920px;
+    --K:#8a2b1e;--R:#1f5c54;--t:#2f5d8a;--world:#b8862f;--image:#6b3fa0;
+    --code-bg:#2a241e;--code-text:#ecdfc4;--code-kw:#85b8db;--code-str:#b7d99a;
+    --code-cm:#9c9080;--code-fn:#e7c373;--code-num:#d99a7e;
+  }
+  *{box-sizing:border-box;} html{scroll-behavior:smooth;}
+  body{margin:0;background:radial-gradient(circle at 12% -10%,#fbf6ec 0%,transparent 45%),radial-gradient(circle at 100% 0%,#efe7d8 0%,transparent 40%),var(--paper);color:var(--ink);font-family:"Newsreader",Georgia,serif;font-size:19px;line-height:1.68;-webkit-font-smoothing:antialiased;}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+  .wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 26px 120px;}
+  header.masthead{text-align:center;padding:78px 0 38px;border-bottom:3px double var(--rule);margin-bottom:18px;}
+  .kicker{font-family:"JetBrains Mono",monospace;font-size:12.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--accent);margin-bottom:22px;}
+  header.masthead h1{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(28px,4.6vw,50px);line-height:1.04;margin:0 0 10px;letter-spacing:-.015em;}
+  header.masthead h1 .ch{display:block;font-size:.36em;letter-spacing:.06em;color:var(--ink-soft);font-weight:500;margin-bottom:8px;}
+  .byline{font-style:italic;color:var(--ink-soft);font-size:18px;margin-top:14px;}
+  .badge{display:inline-block;margin-top:20px;font-family:"JetBrains Mono",monospace;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-2);border:1px solid var(--accent-2);border-radius:30px;padding:6px 16px;}
+  nav.toc{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:26px 30px;margin:34px 0 50px;box-shadow:0 12px 34px -22px var(--shadow);}
+  nav.toc h2{font-family:"Fraunces",serif;font-size:15px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin:0 0 16px;font-weight:600;}
+  nav.toc ol{margin:0;padding-left:0;list-style:none;counter-reset:toc;}
+  nav.toc li{counter-increment:toc;margin:7px 0;font-size:17px;}
+  nav.toc li::before{content:counter(toc,decimal)".";font-family:"JetBrains Mono",monospace;color:var(--gold);font-size:13px;margin-right:12px;}
+  nav.toc a{color:var(--ink);text-decoration:none;border-bottom:1px solid transparent;transition:.2s;}
+  nav.toc a:hover{border-color:var(--accent);color:var(--accent);}
+  section{margin:64px 0;scroll-margin-top:24px;}
+  h2.sec{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(23px,3.4vw,32px);line-height:1.08;margin:0 0 6px;letter-spacing:-.01em;display:flex;align-items:baseline;gap:16px;}
+  h2.sec .num{font-family:"JetBrains Mono",monospace;font-size:.5em;color:var(--accent);border:2px solid var(--accent);border-radius:9px;padding:3px 11px;flex:none;font-weight:600;}
+  h2.sec+.lede{color:var(--ink-soft);font-style:italic;font-size:19px;margin:2px 0 26px;border-bottom:1px solid var(--rule);padding-bottom:22px;}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:22px;margin:40px 0 10px;}
+  h4{font-family:"Fraunces",serif;font-weight:600;font-size:19px;margin:26px 0 8px;}
+  p{margin:14px 0;}strong{font-weight:600;}.term{font-weight:600;color:var(--accent);}em{color:var(--ink-soft);}
+  .box{border-radius:13px;padding:20px 24px;margin:26px 0;border:1px solid var(--rule);background:var(--card);box-shadow:0 10px 30px -24px var(--shadow);}
+  .box .lab{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px;display:block;font-weight:600;}
+  .def{border-left:5px solid var(--accent-2);}.def .lab{color:var(--accent-2);}
+  .intuition{border-left:5px solid var(--gold);background:#fbf4e3;}.intuition .lab{color:var(--gold);}
+  .derive{border-left:5px solid var(--accent);background:#fbf0ed;}.derive .lab{color:var(--accent);}
+  .pitfall{border-left:5px solid #9a3b2e;background:#faeeea;}.pitfall .lab{color:#9a3b2e;}
+  .interview{border-left:5px solid var(--blue);background:#eef3f9;}.interview .lab{color:var(--blue);}
+  .worked{border-left:5px solid var(--purple);background:#f5f0fa;}.worked .lab{color:var(--purple);}
+  .syntax{border-left:5px solid var(--gold);background:#fdf8ee;}.syntax .lab{color:var(--gold);}
+  .box p:first-of-type{margin-top:0;}.box p:last-child{margin-bottom:0;}
+  pre.code-block{background:var(--code-bg);color:var(--code-text);border-radius:10px;padding:16px 20px;margin:12px 0;font-family:"JetBrains Mono",monospace;font-size:13.5px;overflow-x:auto;line-height:1.6;white-space:pre;}
+  pre.code-block .kw{color:var(--code-kw);}pre.code-block .str{color:var(--code-str);}
+  pre.code-block .cm{color:var(--code-cm);font-style:italic;}pre.code-block .fn{color:var(--code-fn);}
+  pre.code-block .nm{color:var(--code-num);}
+  .eqwrap{display:flex;align-items:center;gap:14px;margin:20px 0;}
+  .eqwrap .eq{flex:1;overflow-x:auto;}.eqwrap .tagn{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--ink-soft);flex:none;}
+  .tablewrap{overflow-x:auto;margin:26px 0;border:1px solid var(--rule);border-radius:12px;background:var(--card);}
+  table{border-collapse:collapse;width:100%;font-size:15.5px;}
+  caption{caption-side:top;text-align:left;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);padding:14px 18px 0;font-weight:600;}
+  th,td{padding:10px 15px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top;}
+  thead th{background:var(--paper-2);font-family:"Fraunces",serif;font-weight:600;font-size:14.5px;border-bottom:2px solid var(--rule);}
+  tbody tr:last-child td{border-bottom:none;}td:first-child{font-weight:600;}
+  figure{margin:34px 0;text-align:center;}
+  figure svg{max-width:100%;height:auto;background:var(--card);border:1px solid var(--rule);border-radius:13px;box-shadow:0 14px 38px -26px var(--shadow);}
+  figcaption{font-size:15px;color:var(--ink-soft);font-style:italic;margin-top:12px;max-width:680px;margin-left:auto;margin-right:auto;}
+  .figlab{font-family:"JetBrains Mono",monospace;font-style:normal;color:var(--accent);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin-right:8px;}
+  ul,ol{margin:14px 0;padding-left:26px;}li{margin:7px 0;}
+  code{font-family:"JetBrains Mono",monospace;font-size:.86em;background:var(--paper-2);padding:2px 6px;border-radius:5px;}
+  hr.soft{border:none;border-top:1px solid var(--rule);margin:40px 0;}
+  .pillrow{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0;}
+  .pill{font-family:"JetBrains Mono",monospace;font-size:12px;background:var(--paper-2);border:1px solid var(--rule);border-radius:30px;padding:5px 13px;}
+  .footnote{font-size:15px;color:var(--ink-soft);font-style:italic;margin-top:60px;border-top:1px solid var(--rule);padding-top:20px;}
+  svg text{font-family:"Newsreader",serif;}
+  @media(max-width:620px){body{font-size:17px;}.wrap{padding:0 16px 80px;}h2.sec{flex-wrap:wrap;gap:10px;}}
+</style>
+</head>
+<body><div class="wrap">
+<header class="masthead">
+  <div class="kicker">Computer Vision — Camera Calibration Lab</div>
+  <h1><span class="ch">Complete Reference</span>Camera Calibration &amp; Projection Matrix Estimation</h1>
+  <div class="byline">Pinhole Model · Homogeneous Coordinates · M = K[R|t] · SVD for DLT · RQ Decomposition · Intrinsic Parameters</div>
+  <div class="badge">Lab Companion Edition · Every concept, every syntax pattern</div>
+</header>
+<div class="box intuition" style="margin-top:34px;">
+  <span class="lab">The one-sentence idea</span>
+  <p>A camera converts 3D world coordinates into 2D image pixels. <span class="term">Camera calibration</span> reverses-engineers that conversion: given many known 3D points and their pixel locations, recover the camera's internal geometry (<span class="term">intrinsics</span>: focal length, principal point) and external pose (<span class="term">extrinsics</span>: rotation and translation). This lab does it from scratch using only SVD and RQ decomposition — no OpenCV calibration functions allowed.</p>
+</div>
+<nav class="toc">
+  <h2>What this guide covers</h2>
+  <ol>
+    <li><a href="#bigpic">The Big Picture — What Calibration Does &amp; Why</a></li>
+    <li><a href="#pinhole">The Pinhole Camera Model — Perspective Projection</a></li>
+    <li><a href="#homog">Homogeneous Coordinates &amp; Projective Geometry</a></li>
+    <li><a href="#pmat">The Projection Matrix M = K[R|t]</a></li>
+    <li><a href="#intrinsic">Intrinsic Matrix K — All 5 Parameters Explained</a></li>
+    <li><a href="#extrinsic">Extrinsic Parameters R and t</a></li>
+    <li><a href="#dlt">Setting Up the Linear System — DLT Algorithm</a></li>
+    <li><a href="#svd">Solving Am = 0 via SVD</a></li>
+    <li><a href="#rq">RQ Decomposition — Recovering K and R</a></li>
+    <li><a href="#corners">Corner Detection &amp; World Points Setup</a></li>
+    <li><a href="#syntax">Full Code Walkthrough — Every Syntax Pattern</a></li>
+    <li><a href="#results">Interpreting the Results</a></li>
+    <li><a href="#prep">Cheat-Sheet &amp; Interview Q&amp;A</a></li>
+  </ol>
+</nav>
+<section id="bigpic">
+  <h2 class="sec"><span class="num">1</span>The Big Picture — What Calibration Does &amp; Why</h2>
+  <p class="lede">Every measurement made from a camera image depends on knowing the camera's geometry. Calibration recovers it — once — so you can use it for everything else.</p>
+
+  <figure>
+    <svg viewBox="0 0 720 200" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4b4239"/></marker></defs>
+      <text x="360" y="20" text-anchor="middle" font-size="13" fill="#4b4239" font-weight="600">The calibration pipeline — this entire lab in one picture</text>
+      <rect x="15" y="50" width="120" height="110" rx="10" fill="#dce8f5" stroke="var(--world)" stroke-width="2"/>
+      <text x="75" y="78" text-anchor="middle" font-size="12" fill="var(--world)" font-weight="700">9 Checkerboard</text>
+      <text x="75" y="96" text-anchor="middle" font-size="11" fill="var(--world)">images at Z =</text>
+      <text x="75" y="113" text-anchor="middle" font-size="11" fill="var(--world)">400–1200 mm</text>
+      <text x="75" y="145" text-anchor="middle" font-size="10" fill="var(--ink-soft)">c1.png … c9.png</text>
+
+      <rect x="165" y="50" width="120" height="110" rx="10" fill="#e8f5f0" stroke="var(--accent-2)" stroke-width="2"/>
+      <text x="225" y="78" text-anchor="middle" font-size="12" fill="var(--accent-2)" font-weight="700">Corner detection</text>
+      <text x="225" y="96" text-anchor="middle" font-size="11" fill="var(--accent-2)">486 (X,Y,Z,u,v)</text>
+      <text x="225" y="113" text-anchor="middle" font-size="11" fill="var(--accent-2)">point pairs</text>
+      <text x="225" y="145" text-anchor="middle" font-size="10" fill="var(--ink-soft)">findChessboardCorners</text>
+      <line x1="135" y1="105" x2="164" y2="105" stroke="var(--ink)" stroke-width="2" marker-end="url(#a)"/>
+
+      <rect x="315" y="50" width="120" height="110" rx="10" fill="#fbf4e3" stroke="var(--gold)" stroke-width="2.5"/>
+      <text x="375" y="78" text-anchor="middle" font-size="12" fill="var(--gold)" font-weight="700">Build matrix A</text>
+      <text x="375" y="96" text-anchor="middle" font-size="11" fill="var(--gold)">972×12 from</text>
+      <text x="375" y="113" text-anchor="middle" font-size="11" fill="var(--gold)">DLT equations</text>
+      <text x="375" y="145" text-anchor="middle" font-size="10" fill="var(--ink-soft)">2 rows per point pair</text>
+      <line x1="285" y1="105" x2="314" y2="105" stroke="var(--ink)" stroke-width="2" marker-end="url(#a)"/>
+
+      <rect x="465" y="50" width="120" height="110" rx="10" fill="#fde8e8" stroke="var(--K)" stroke-width="2.5"/>
+      <text x="525" y="78" text-anchor="middle" font-size="12" fill="var(--K)" font-weight="700">SVD → M (3×4)</text>
+      <text x="525" y="96" text-anchor="middle" font-size="11" fill="var(--K)">projection matrix</text>
+      <text x="525" y="113" text-anchor="middle" font-size="11" fill="var(--K)">last row of V^T</text>
+      <text x="525" y="145" text-anchor="middle" font-size="10" fill="var(--ink-soft)">np.linalg.svd(A)</text>
+      <line x1="435" y1="105" x2="464" y2="105" stroke="var(--ink)" stroke-width="2" marker-end="url(#a)"/>
+
+      <rect x="615" y="50" width="95" height="110" rx="10" fill="#f5f0fa" stroke="var(--image)" stroke-width="2.5"/>
+      <text x="662" y="73" text-anchor="middle" font-size="11" fill="var(--image)" font-weight="700">RQ → K, R, t</text>
+      <text x="662" y="91" text-anchor="middle" font-size="11" fill="var(--image)">fx=1422</text>
+      <text x="662" y="108" text-anchor="middle" font-size="11" fill="var(--image)">fy=1421</text>
+      <text x="662" y="125" text-anchor="middle" font-size="11" fill="var(--image)">cx=512</text>
+      <text x="662" y="145" text-anchor="middle" font-size="10" fill="var(--ink-soft)">scipy.linalg.rq</text>
+      <line x1="585" y1="105" x2="614" y2="105" stroke="var(--ink)" stroke-width="2" marker-end="url(#a)"/>
+    </svg>
+    <figcaption><span class="figlab">Fig 1</span>The complete lab pipeline. 9 checkerboard images give 486 known 3D↔2D correspondences. These build a 972×12 linear system solved by SVD to get the 3×4 projection matrix M. RQ decomposition then separates M into the intrinsic matrix K and extrinsic rotation R.</figcaption>
+  </figure>
+
+  <div class="box intuition">
+    <span class="lab">Why a checkerboard? Why multiple distances?</span>
+    <p><strong>Checkerboard:</strong> the corners of a checkerboard grid are precisely locatable (sub-pixel accuracy) and form a known, regular 3D pattern. Their coordinates in the physical world are exactly (i × square_size, j × square_size, Z) — no measurement uncertainty.</p>
+    <p><strong>Multiple Z-planes:</strong> a single image from one distance leaves the system underdetermined or degenerate. Seeing the same pattern at 9 different Z-distances (400mm to 1200mm) gives enough independent equations to solve for all 12 unknowns of M robustly.</p>
+  </div>
+</section>
+
+<section id="pinhole">
+  <h2 class="sec"><span class="num">2</span>The Pinhole Camera Model — Perspective Projection</h2>
+  <p class="lede">The foundational model for any camera: light from a 3D point passes through a single point (the optical centre) and lands on the image plane. This geometry produces the perspective projection equations — the basis of everything else in this lab.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 310" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="pa" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4b4239"/></marker>
+        <marker id="pw" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="var(--world)"/></marker>
+        <marker id="pk" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="var(--K)"/></marker>
+      </defs>
+      <text x="350" y="20" text-anchor="middle" font-size="13" fill="#4b4239" font-weight="600">Pinhole camera model — similar triangles give the projection equations</text>
+
+      <!-- World point P -->
+      <circle cx="80" cy="100" r="8" fill="var(--world)"/>
+      <text x="68" y="86" font-size="12" fill="var(--world)" font-weight="700">P=(X,Y,Z)</text>
+      <text x="68" y="100" font-size="10" fill="var(--world)">world point</text>
+
+      <!-- Optical axis -->
+      <line x1="60" y1="190" x2="660" y2="190" stroke="var(--rule)" stroke-width="1" stroke-dasharray="6,4"/>
+      <text x="660" y="186" font-size="11" fill="var(--ink-soft)">optical axis</text>
+
+      <!-- Projection line from P through O to image -->
+      <line x1="80" y1="100" x2="420" y2="190" stroke="var(--world)" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <line x1="420" y1="190" x2="540" y2="236" stroke="var(--world)" stroke-width="1.5" stroke-dasharray="5,3"/>
+
+      <!-- Optical centre O -->
+      <circle cx="420" cy="190" r="7" fill="var(--K)" stroke="white" stroke-width="2"/>
+      <text x="420" y="173" text-anchor="middle" font-size="12" fill="var(--K)" font-weight="700">O</text>
+      <text x="420" y="161" text-anchor="middle" font-size="10" fill="var(--K)">optical centre</text>
+
+      <!-- Image plane -->
+      <line x1="520" y1="120" x2="520" y2="270" stroke="var(--image)" stroke-width="3"/>
+      <text x="540" y="115" font-size="11" fill="var(--image)" font-weight="600">Image plane</text>
+
+      <!-- p = projection of P on image plane -->
+      <circle cx="520" cy="236" r="6" fill="var(--image)"/>
+      <text x="535" y="230" font-size="12" fill="var(--image)" font-weight="700">p=(u,v)</text>
+
+      <!-- focal length f -->
+      <line x1="420" y1="255" x2="520" y2="255" stroke="var(--K)" stroke-width="2" marker-end="url(#pk)"/>
+      <line x1="520" y1="255" x2="420" y2="255" stroke="var(--K)" stroke-width="1" marker-end="url(#pk)"/>
+      <text x="470" y="270" text-anchor="middle" font-size="12" fill="var(--K)" font-weight="600">f (focal length)</text>
+
+      <!-- Z depth -->
+      <line x1="80" y1="275" x2="420" y2="275" stroke="var(--world)" stroke-width="2" marker-end="url(#pa)"/>
+      <text x="250" y="291" text-anchor="middle" font-size="12" fill="var(--world)" font-weight="600">Z (depth of world point)</text>
+
+      <!-- X height annotation -->
+      <line x1="70" y1="100" x2="70" y2="190" stroke="var(--world)" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="52" y="148" text-anchor="middle" font-size="11" fill="var(--world)">X</text>
+
+      <!-- x image height annotation -->
+      <line x1="535" y1="190" x2="535" y2="236" stroke="var(--image)" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="555" y="215" font-size="11" fill="var(--image)">x</text>
+
+      <!-- Similar triangles label -->
+      <text x="250" y="135" text-anchor="middle" font-size="11" fill="var(--ink-soft)" font-style="italic">Similar triangles: x/f = X/Z</text>
+      <text x="250" y="151" text-anchor="middle" font-size="12" fill="var(--ink)" font-weight="600">→ x = f·X/Z</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 2</span>The pinhole model. A world point P at (X,Y,Z) projects through optical centre O onto the image plane at distance f. Similar triangles give x = f·X/Z and y = f·Y/Z — but this is in camera-centred coordinates with origin at the image centre.</figcaption>
+  </figure>
+
+  <div class="box derive">
+    <span class="lab">From similar triangles to the full projection equations</span>
+    <p>From the geometry, a world point at position (X, Y, Z) in camera coordinates projects to image coordinates:</p>
+    <div class="eqwrap"><div class="eq">$$x = f\cdot\frac{X}{Z}, \qquad y = f\cdot\frac{Y}{Z}$$</div></div>
+    <p>But the image coordinate origin is usually at the top-left corner of the image, not the centre. Adding the <span class="term">principal point</span> offset (c_x, c_y) (the pixel where the optical axis hits the image):</p>
+    <div class="eqwrap"><div class="eq">$$u = f_x\cdot\frac{X}{Z} + c_x, \qquad v = f_y\cdot\frac{Y}{Z} + c_y$$</div></div>
+    <p>where \(f_x = f/s_x\) and \(f_y = f/s_y\) are the focal length in pixel units (f in mm, divided by pixel pitch in mm/pixel). These are the two key equations that the entire calibration procedure is trying to recover.</p>
+  </div>
+
+  <div class="box intuition">
+    <span class="lab">What "perspective" means — why distant objects look smaller</span>
+    <p>Notice the Z in the denominator: the image coordinate x = f·X/Z. Double the distance Z → image size halves. This is exactly perspective: objects shrink with distance. A 25mm checkerboard square at Z=400mm appears \(f \times 25/400 \approx 89\) pixels wide (with f≈1422). At Z=1200mm the same square appears only \(1422 \times 25/1200 \approx 30\) pixels wide. This is why the lab uses 9 images at different distances — the scale variation provides rich information for calibration.</p>
+  </div>
+</section>
+<section id="homog">
+  <h2 class="sec"><span class="num">3</span>Homogeneous Coordinates &amp; Projective Geometry</h2>
+  <p class="lede">Perspective projection involves division by Z, which makes it non-linear. Homogeneous coordinates elegantly turn this division into a linear matrix multiplication — the key move that makes calibration tractable.</p>
+
+  <h3>The Problem with Division</h3>
+  <p>The equation \(u = f_x X/Z + c_x\) has Z in the denominator — it's <em>not</em> a linear transformation. Linear algebra loves linear transformations (matrices). So we need to represent this projection as a matrix multiply.</p>
+
+  <div class="box def">
+    <span class="lab">Homogeneous coordinates — adding a scale factor</span>
+    <p>A 2D point \((u, v)\) becomes the homogeneous 3-vector \((u, v, 1)^T\). A 3D point \((X,Y,Z)\) becomes the 4-vector \((X,Y,Z,1)^T\). In homogeneous coordinates, a scale factor doesn't change which point you're representing: \((u,v,1) \sim (ku, kv, k)\) for any \(k \neq 0\).</p>
+    <p>The projection \(u = f_x X/Z + c_x\) can now be written as a matrix multiplication followed by a single division to un-homogenise:</p>
+    <div class="eqwrap"><div class="eq">$$\begin{pmatrix}su\\sv\\s\end{pmatrix} = \underbrace{\begin{pmatrix}f_x & 0 & c_x & 0 \\ 0 & f_y & c_y & 0 \\ 0 & 0 & 1 & 0\end{pmatrix}}_{M \text{ (3×4)}}\begin{pmatrix}X\\Y\\Z\\1\end{pmatrix}$$</div></div>
+    <p>Then \(u = (su)/s\) and \(v = (sv)/s\) where \(s = Z\). This is the magic: the messy division has been absorbed into the homogeneous representation — everything above the line is a clean matrix multiply.</p>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 680 220" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="ha" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4b4239"/></marker></defs>
+      <text x="340" y="20" text-anchor="middle" font-size="13" fill="#4b4239" font-weight="600">From 3D world point to 2D pixel — three coordinate systems</text>
+
+      <!-- System 1: World coords -->
+      <rect x="20" y="45" width="170" height="90" rx="9" fill="#dce8f5" stroke="var(--world)" stroke-width="2"/>
+      <text x="105" y="68" text-anchor="middle" font-size="12" fill="var(--world)" font-weight="700">World Coords</text>
+      <text x="105" y="88" text-anchor="middle" font-size="12" fill="var(--world)">(X, Y, Z, 1)ᵀ</text>
+      <text x="105" y="108" text-anchor="middle" font-size="10" fill="var(--world)">4-vector</text>
+      <text x="105" y="125" text-anchor="middle" font-size="10" fill="var(--world)" font-style="italic">homogeneous 3D</text>
+
+      <!-- Arrow + M label -->
+      <line x1="190" y1="90" x2="245" y2="90" stroke="var(--K)" stroke-width="2.5" marker-end="url(#ha)"/>
+      <rect x="193" y="70" width="50" height="28" rx="5" fill="#fde8e8" stroke="var(--K)" stroke-width="1.5"/>
+      <text x="218" y="89" text-anchor="middle" font-size="13" fill="var(--K)" font-weight="700">M</text>
+      <text x="218" y="58" text-anchor="middle" font-size="10" fill="var(--K)">3×4 matrix</text>
+      <text x="218" y="114" text-anchor="middle" font-size="10" fill="var(--K)">multiply</text>
+
+      <!-- System 2: Homogeneous image coords -->
+      <rect x="250" y="45" width="170" height="90" rx="9" fill="#fbf4e3" stroke="var(--gold)" stroke-width="2"/>
+      <text x="335" y="68" text-anchor="middle" font-size="12" fill="var(--gold)" font-weight="700">Homog. Image</text>
+      <text x="335" y="88" text-anchor="middle" font-size="12" fill="var(--gold)">(su, sv, s)ᵀ</text>
+      <text x="335" y="108" text-anchor="middle" font-size="10" fill="var(--gold)">3-vector</text>
+      <text x="335" y="125" text-anchor="middle" font-size="10" fill="var(--gold)" font-style="italic">s = Z (depth)</text>
+
+      <!-- Arrow + divide -->
+      <line x1="420" y1="90" x2="475" y2="90" stroke="var(--image)" stroke-width="2.5" marker-end="url(#ha)"/>
+      <text x="447" y="80" text-anchor="middle" font-size="10" fill="var(--image)">÷ s</text>
+      <text x="447" y="106" text-anchor="middle" font-size="10" fill="var(--image)">un-homogenise</text>
+
+      <!-- System 3: Pixel coords -->
+      <rect x="480" y="45" width="170" height="90" rx="9" fill="#f5f0fa" stroke="var(--image)" stroke-width="2"/>
+      <text x="565" y="68" text-anchor="middle" font-size="12" fill="var(--image)" font-weight="700">Pixel Coords</text>
+      <text x="565" y="88" text-anchor="middle" font-size="12" fill="var(--image)">(u, v)</text>
+      <text x="565" y="108" text-anchor="middle" font-size="10" fill="var(--image)">2-vector</text>
+      <text x="565" y="125" text-anchor="middle" font-size="10" fill="var(--image)" font-style="italic">what you see on screen</text>
+
+      <!-- Summary formula -->
+      <rect x="150" y="160" width="380" height="40" rx="8" fill="var(--paper-2)" stroke="var(--rule)" stroke-width="1.5"/>
+      <text x="340" y="185" text-anchor="middle" font-size="13" fill="var(--ink)" font-weight="600">p̃ = M · P̃  then  (u,v) = (p̃₁/p̃₃, p̃₂/p̃₃)</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 3</span>The three coordinate systems. The 3×4 matrix M turns a 4D homogeneous world point into a 3D homogeneous image point. Dividing by the third element recovers actual pixel coordinates. Everything in between is linear — solvable by standard linear algebra.</figcaption>
+  </figure>
+</section>
+
+<section id="pmat">
+  <h2 class="sec"><span class="num">4</span>The Projection Matrix M = K[R|t]</h2>
+  <p class="lede">The 3×4 projection matrix M is the star of this lab — everything builds up to estimating it. Its structure M = K[R|t] encodes both the camera's internal geometry and its position in the world.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg">
+      <text x="350" y="20" text-anchor="middle" font-size="13" fill="#4b4239" font-weight="600">Anatomy of the 3×4 projection matrix M = K [ R | t ]</text>
+
+      <!-- Full M matrix (3x4) -->
+      <rect x="20" y="45" width="220" height="130" rx="10" fill="var(--card)" stroke="var(--K)" stroke-width="2.5"/>
+      <text x="130" y="68" text-anchor="middle" font-size="13" fill="var(--K)" font-weight="700">M  (3×4)</text>
+      <text x="130" y="90" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="12" fill="var(--K)">m₁₁ m₁₂ m₁₃ m₁₄</text>
+      <text x="130" y="110" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="12" fill="var(--K)">m₂₁ m₂₂ m₂₃ m₂₄</text>
+      <text x="130" y="130" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="12" fill="var(--K)">m₃₁ m₃₂ m₃₃ m₃₄</text>
+      <text x="130" y="160" text-anchor="middle" font-size="11" fill="var(--K)" font-style="italic">12 elements, estimated by SVD</text>
+
+      <!-- Equals -->
+      <text x="262" y="115" text-anchor="middle" font-size="22" fill="var(--ink)" font-weight="700">=</text>
+
+      <!-- K matrix -->
+      <rect x="285" y="45" width="130" height="130" rx="10" fill="#fde8e8" stroke="var(--K)" stroke-width="2.5"/>
+      <text x="350" y="67" text-anchor="middle" font-size="13" fill="var(--K)" font-weight="700">K  (3×3)</text>
+      <text x="350" y="90" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="var(--K)">fx  γ  cx</text>
+      <text x="350" y="108" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="var(--K)"> 0  fy  cy</text>
+      <text x="350" y="126" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="var(--K)"> 0   0   1</text>
+      <text x="350" y="160" text-anchor="middle" font-size="10" fill="var(--K)" font-style="italic">upper triangular</text>
+
+      <!-- Bracket -->
+      <text x="432" y="120" text-anchor="middle" font-size="36" fill="var(--ink-soft)">[</text>
+
+      <!-- R matrix -->
+      <rect x="453" y="45" width="100" height="130" rx="10" fill="#e8f5f0" stroke="var(--R)" stroke-width="2.5"/>
+      <text x="503" y="67" text-anchor="middle" font-size="13" fill="var(--R)" font-weight="700">R (3×3)</text>
+      <text x="503" y="90" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="var(--R)">r₁ r₂ r₃</text>
+      <text x="503" y="108" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="var(--R)">r₄ r₅ r₆</text>
+      <text x="503" y="126" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="var(--R)">r₇ r₈ r₉</text>
+      <text x="503" y="160" text-anchor="middle" font-size="10" fill="var(--R)" font-style="italic">orthogonal</text>
+
+      <!-- Bar between R and t -->
+      <line x1="555" y1="48" x2="555" y2="172" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+      <!-- t vector -->
+      <rect x="565" y="45" width="55" height="130" rx="10" fill="#dce8f5" stroke="var(--t)" stroke-width="2.5"/>
+      <text x="592" y="67" text-anchor="middle" font-size="12" fill="var(--t)" font-weight="700">t (3×1)</text>
+      <text x="592" y="95" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="var(--t)">t₁</text>
+      <text x="592" y="115" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="var(--t)">t₂</text>
+      <text x="592" y="135" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="var(--t)">t₃</text>
+      <text x="592" y="160" text-anchor="middle" font-size="10" fill="var(--t)" font-style="italic">translation</text>
+
+      <text x="628" y="120" text-anchor="middle" font-size="36" fill="var(--ink-soft)">]</text>
+
+      <!-- labels below -->
+      <text x="130" y="205" text-anchor="middle" font-size="11" fill="var(--ink-soft)">what SVD gives us</text>
+      <text x="350" y="205" text-anchor="middle" font-size="11" fill="var(--K)">Intrinsics (camera property)</text>
+      <text x="503" y="205" text-anchor="middle" font-size="11" fill="var(--R)">Rotation (camera pose)</text>
+      <text x="592" y="205" text-anchor="middle" font-size="11" fill="var(--t)">Translation</text>
+
+      <!-- Summary note -->
+      <rect x="70" y="225" width="560" height="40" rx="8" fill="var(--paper-2)" stroke="var(--rule)" stroke-width="1"/>
+      <text x="350" y="248" text-anchor="middle" font-size="12" fill="var(--ink)">M is a single 3×4 matrix that encodes the full camera model: 5 intrinsic parameters + 6 extrinsic (R has 3 DOF, t has 3) = 11 DOF total.</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 4</span>The projection matrix M (3×4) decomposes as M = K·[R | t] where K is the 3×3 upper-triangular intrinsic matrix, R is the 3×3 rotation matrix (orthogonal, det=1), and t is the 3×1 translation vector. K stays constant across views; R and t change for every camera position.</figcaption>
+  </figure>
+
+  <div class="box def">
+    <span class="lab">The exact relationship: how M maps a world point to a pixel</span>
+    <p>Writing it out fully: the world point \(\mathbf{P}_w = (X_w, Y_w, Z_w, 1)^T\) is first transformed into camera coordinates by \([R|t]\), then projected by K:</p>
+    <div class="eqwrap"><div class="eq">$$s\begin{pmatrix}u\\v\\1\end{pmatrix} = K\left[R \;\Big|\; t\right]\begin{pmatrix}X_w\\Y_w\\Z_w\\1\end{pmatrix} = K\underbrace{\left(R\begin{pmatrix}X_w\\Y_w\\Z_w\end{pmatrix}+t\right)}_{\text{camera coords }(X_c,Y_c,Z_c)}$$</div></div>
+    <p>This is a chain: world → camera (via R,t) → image (via K) → pixel (divide by Z_c). Each step is handled by part of M.</p>
+  </div>
+</section>
+<section id="intrinsic">
+  <h2 class="sec"><span class="num">5</span>Intrinsic Matrix K — All 5 Parameters Explained</h2>
+  <p class="lede">K encodes everything about the camera's internal optics and sensor geometry. Five numbers. This is what the lab is trying to recover.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="ka" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4b4239"/></marker></defs>
+      <text x="350" y="20" text-anchor="middle" font-size="13" fill="#4b4239" font-weight="600">Intrinsic Matrix K — each element and what it represents physically</text>
+
+      <!-- K matrix -->
+      <rect x="20" y="50" width="260" height="150" rx="10" fill="#fde8e8" stroke="var(--K)" stroke-width="2.5"/>
+      <text x="150" y="75" text-anchor="middle" font-size="13" fill="var(--K)" font-weight="700">K  (3×3 upper triangular)</text>
+      <g font-family="JetBrains Mono,monospace" font-size="16" text-anchor="middle">
+        <text x="95" y="110" fill="var(--K)" font-weight="700">fx</text>
+        <text x="150" y="110" fill="var(--gold)" font-weight="700">γ</text>
+        <text x="210" y="110" fill="var(--t)" font-weight="700">cx</text>
+        <text x="95" y="138" fill="var(--ink-soft)">0</text>
+        <text x="150" y="138" fill="var(--K)" font-weight="700">fy</text>
+        <text x="210" y="138" fill="var(--t)" font-weight="700">cy</text>
+        <text x="95" y="166" fill="var(--ink-soft)">0</text>
+        <text x="150" y="166" fill="var(--ink-soft)">0</text>
+        <text x="210" y="166" fill="var(--ink-soft)">1</text>
+      </g>
+
+      <!-- Annotations with arrows -->
+      <!-- fx -->
+      <line x1="82" y1="108" x2="30" y2="230" stroke="var(--K)" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ka)"/>
+      <text x="30" y="248" text-anchor="middle" font-size="11" fill="var(--K)" font-weight="600">fx = f/sx</text>
+      <text x="30" y="264" text-anchor="middle" font-size="10" fill="var(--K)">focal length</text>
+      <text x="30" y="280" text-anchor="middle" font-size="10" fill="var(--K)">in pixels (X axis)</text>
+
+      <!-- fy -->
+      <line x1="150" y1="138" x2="150" y2="228" stroke="var(--K)" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ka)"/>
+      <text x="150" y="248" text-anchor="middle" font-size="11" fill="var(--K)" font-weight="600">fy = f/sy</text>
+      <text x="150" y="264" text-anchor="middle" font-size="10" fill="var(--K)">focal length</text>
+      <text x="150" y="280" text-anchor="middle" font-size="10" fill="var(--K)">in pixels (Y axis)</text>
+
+      <!-- gamma -->
+      <line x1="150" y1="107" x2="320" y2="120" stroke="var(--gold)" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ka)"/>
+      <text x="370" y="120" font-size="11" fill="var(--gold)" font-weight="600">γ = skew parameter</text>
+      <text x="370" y="136" font-size="10" fill="var(--gold)">= 0 when axes are perpendicular</text>
+      <text x="370" y="152" font-size="10" fill="var(--gold)">(this lab assumes γ = 0)</text>
+
+      <!-- cx, cy -->
+      <line x1="210" y1="107" x2="380" y2="175" stroke="var(--t)" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ka)"/>
+      <text x="385" y="175" font-size="11" fill="var(--t)" font-weight="600">cx, cy = principal point</text>
+      <text x="385" y="191" font-size="10" fill="var(--t)">where optical axis hits sensor</text>
+      <text x="385" y="207" font-size="10" fill="var(--t)">ideally = image centre</text>
+      <text x="385" y="223" font-size="10" fill="var(--t)" font-style="italic">lab result: cx≈512, cy≈512</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 5</span>The intrinsic matrix K has 5 free parameters (4 if skew=0). Once calibrated, K is fixed for a given camera — it doesn't change when you move the camera around, change what you're photographing, or change the lens zoom. Only changing the physical lens or sensor changes K.</figcaption>
+  </figure>
+
+  <div class="box def">
+    <span class="lab">The 5 intrinsic parameters — physical meanings</span>
+    <ul>
+      <li><strong style="color:var(--K)">f_x</strong> — focal length along the x-axis in pixel units. Equals physical focal length f divided by horizontal pixel pitch s_x (mm/pixel). Lab result: 1422 pixels.</li>
+      <li><strong style="color:var(--K)">f_y</strong> — focal length along the y-axis in pixel units. Usually very close to f_x unless pixels are non-square. Lab result: 1421 pixels (nearly identical to f_x — square pixels).</li>
+      <li><strong style="color:var(--t)">c_x</strong> — x-coordinate of the principal point (where the optical axis pierces the image plane). Ideally W/2. Lab result: 511.9 ≈ W/2 for a 1024-pixel-wide image.</li>
+      <li><strong style="color:var(--t)">c_y</strong> — y-coordinate of the principal point. Ideally H/2. Lab result: 512.3 ≈ H/2.</li>
+      <li><strong style="color:var(--gold)">γ (skew)</strong> — non-orthogonality of the pixel axes. Zero for virtually all modern cameras. <em>This lab sets γ=0 as an assumption:</em> <code>K_final[0,1] = 0</code>.</li>
+    </ul>
+  </div>
+
+  <div class="box worked">
+    <span class="lab">Real numbers from this lab — sanity-checking the result</span>
+    <p><strong>fx = 1422 pixels, fy = 1421 pixels:</strong> the camera has a square sensor with very nearly square pixels (ratio fy/fx = 0.9995). The physical focal length can be estimated as f ≈ fx × pixel_pitch. If pixel_pitch ≈ 3.4μm (typical phone sensor), then f ≈ 1422 × 0.0034mm ≈ 4.8mm — reasonable for a compact camera.</p>
+    <p><strong>cx = 511.9, cy = 512.3:</strong> the principal point is essentially at the image centre. For a 1024×1024 image, ideal values are (512, 512). This small offset (0.1 and 0.3 pixels) is within expected manufacturing tolerance — a good sanity check that the calibration worked.</p>
+  </div>
+</section>
+
+<section id="extrinsic">
+  <h2 class="sec"><span class="num">6</span>Extrinsic Parameters R and t</h2>
+  <p class="lede">While K describes the camera itself, R and t describe where the camera is in the world — its position and orientation. These change every time you move the camera.</p>
+
+  <figure>
+    <svg viewBox="0 0 680 240" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="ea" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4b4239"/></marker></defs>
+      <text x="340" y="20" text-anchor="middle" font-size="13" fill="#4b4239" font-weight="600">Extrinsics: R and t transform world coordinates into camera coordinates</text>
+
+      <!-- World frame -->
+      <rect x="20" y="50" width="180" height="150" rx="10" fill="#dce8f5" stroke="var(--world)" stroke-width="2"/>
+      <text x="110" y="73" text-anchor="middle" font-size="12" fill="var(--world)" font-weight="700">World Frame</text>
+      <!-- World axes -->
+      <line x1="60" y1="175" x2="100" y2="175" stroke="var(--world)" stroke-width="2" marker-end="url(#ea)"/>
+      <text x="105" y="179" font-size="11" fill="var(--world)">X_w</text>
+      <line x1="60" y1="175" x2="60" y2="130" stroke="var(--world)" stroke-width="2" marker-end="url(#ea)"/>
+      <text x="44" y="127" font-size="11" fill="var(--world)">Y_w</text>
+      <line x1="60" y1="175" x2="100" y2="140" stroke="var(--world)" stroke-width="2" marker-end="url(#ea)"/>
+      <text x="104" y="137" font-size="11" fill="var(--world)">Z_w</text>
+      <!-- World point -->
+      <circle cx="140" cy="100" r="6" fill="var(--gold)"/>
+      <text x="148" y="98" font-size="11" fill="var(--gold)">P</text>
+
+      <!-- R, t arrow -->
+      <line x1="200" y1="125" x2="330" y2="125" stroke="var(--ink)" stroke-width="2.5" marker-end="url(#ea)"/>
+      <rect x="220" y="103" width="90" height="28" rx="6" fill="var(--paper-2)" stroke="var(--R)" stroke-width="1.5"/>
+      <text x="265" y="122" text-anchor="middle" font-size="12" fill="var(--R)" font-weight="700">R,  t</text>
+      <text x="265" y="148" text-anchor="middle" font-size="10" fill="var(--R)">P_c = R·P_w + t</text>
+
+      <!-- Camera frame -->
+      <rect x="335" y="50" width="180" height="150" rx="10" fill="#e8f5f0" stroke="var(--R)" stroke-width="2"/>
+      <text x="425" y="73" text-anchor="middle" font-size="12" fill="var(--R)" font-weight="700">Camera Frame</text>
+      <!-- Camera axes -->
+      <line x1="370" y1="175" x2="410" y2="175" stroke="var(--R)" stroke-width="2" marker-end="url(#ea)"/>
+      <text x="415" y="179" font-size="11" fill="var(--R)">X_c</text>
+      <line x1="370" y1="175" x2="370" y2="130" stroke="var(--R)" stroke-width="2" marker-end="url(#ea)"/>
+      <text x="354" y="127" font-size="11" fill="var(--R)">Y_c</text>
+      <line x1="370" y1="175" x2="410" y2="140" stroke="var(--R)" stroke-width="2" marker-end="url(#ea)"/>
+      <text x="414" y="137" font-size="11" fill="var(--R)">Z_c</text>
+      <!-- Same world point, different coords -->
+      <circle cx="455" cy="115" r="6" fill="var(--gold)"/>
+      <text x="463" y="113" font-size="11" fill="var(--gold)">P in</text>
+      <text x="463" y="127" font-size="11" fill="var(--gold)">camera</text>
+      <text x="463" y="143" font-size="11" fill="var(--gold)">coords</text>
+
+      <!-- Caption boxes -->
+      <rect x="30" y="215" width="160" height="18" rx="4" fill="none"/>
+      <text x="110" y="228" text-anchor="middle" font-size="10" fill="var(--world)" font-style="italic">fixed, external frame</text>
+      <rect x="345" y="215" width="160" height="18" rx="4" fill="none"/>
+      <text x="425" y="228" text-anchor="middle" font-size="10" fill="var(--R)" font-style="italic">Z_c points out from lens</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 6</span>R and t transform from the external world coordinate frame to the camera's own coordinate frame (origin at the optical centre, Z-axis pointing out through the lens). One set of (R,t) per image — the camera is in a different position for each of the 9 checkerboard photos.</figcaption>
+  </figure>
+
+  <div class="box def">
+    <span class="lab">Properties of R and t</span>
+    <p><strong>R (rotation, 3×3):</strong> orthogonal matrix — R^T = R^{-1}, det(R) = +1. Has only 3 degrees of freedom (not 9) — parameterisable as three rotation angles (roll, pitch, yaw). It rotates the world frame to align with the camera frame.</p>
+    <p><strong>t (translation, 3×1):</strong> the position of the world origin expressed in camera coordinates. Note: this is NOT the position of the camera in world coordinates. The camera's world position is -R^T · t.</p>
+    <p><strong>Together [R|t]:</strong> 6 degrees of freedom (3 for rotation, 3 for translation) — the pose of the camera.</p>
+  </div>
+</section>
+<section id="dlt">
+  <h2 class="sec"><span class="num">7</span>Setting Up the Linear System — DLT Algorithm</h2>
+  <p class="lede">The Direct Linear Transform (DLT) turns the non-linear problem of recovering M from point correspondences into a standard Ax=0 linear system. Every line in <code>compute_projection_matrix()</code> builds this system.</p>
+
+  <h3>From One Point Pair to Two Equations</h3>
+  <p>We know: for world point \(\mathbf{P}=(X,Y,Z,1)^T\) and image point \(\mathbf{p}=(u,v)\):</p>
+  <div class="eqwrap"><div class="eq">$$\begin{pmatrix}su\\sv\\s\end{pmatrix} = M\begin{pmatrix}X\\Y\\Z\\1\end{pmatrix} = \begin{pmatrix}\mathbf{m}_1^T\mathbf{P}\\\mathbf{m}_2^T\mathbf{P}\\\mathbf{m}_3^T\mathbf{P}\end{pmatrix}$$</div></div>
+  <p>where \(\mathbf{m}_1^T, \mathbf{m}_2^T, \mathbf{m}_3^T\) are the three rows of M. Since \(u = (su)/s = (\mathbf{m}_1^T\mathbf{P})/(\mathbf{m}_3^T\mathbf{P})\), cross-multiplying eliminates s:</p>
+
+  <div class="box derive">
+    <span class="lab">Deriving the 2 linear equations per point</span>
+    <p>\(u \cdot \mathbf{m}_3^T\mathbf{P} = \mathbf{m}_1^T\mathbf{P}\) and \(v \cdot \mathbf{m}_3^T\mathbf{P} = \mathbf{m}_2^T\mathbf{P}\)</p>
+    <p>Stack the 12 elements of M into a vector \(\mathbf{m} = (m_{11}, m_{12}, \ldots, m_{34})^T\). Rearranging:</p>
+    <div class="eqwrap"><div class="eq">$$\underbrace{\begin{pmatrix}X & Y & Z & 1 & 0 & 0 & 0 & 0 & -uX & -uY & -uZ & -u \\ 0 & 0 & 0 & 0 & X & Y & Z & 1 & -vX & -vY & -vZ & -v\end{pmatrix}}_{\text{2 rows of A, for this one point}}\mathbf{m} = \mathbf{0}$$</div></div>
+    <p>These are exactly the two rows added to A in the code's inner loop. N point pairs → 2N rows → A is (2N × 12). For this lab: 486 pairs → A is (972 × 12).</p>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 680 260" xmlns="http://www.w3.org/2000/svg">
+      <text x="340" y="20" text-anchor="middle" font-size="13" fill="#4b4239" font-weight="600">Structure of the A matrix — 2 rows per (X,Y,Z) ↔ (u,v) correspondence</text>
+
+      <!-- A matrix visual -->
+      <rect x="20" y="45" width="440" height="200" rx="10" fill="var(--card)" stroke="var(--gold)" stroke-width="2"/>
+      <text x="240" y="67" text-anchor="middle" font-size="12" fill="var(--gold)" font-weight="700">A matrix  (2N × 12)</text>
+
+      <!-- Column headers -->
+      <g font-family="JetBrains Mono,monospace" font-size="10" fill="var(--ink-soft)" text-anchor="middle">
+        <text x="55" y="83">X</text><text x="75" y="83">Y</text><text x="95" y="83">Z</text><text x="115" y="83">1</text>
+        <text x="145" y="83">0</text><text x="165" y="83">0</text><text x="185" y="83">0</text><text x="205" y="83">0</text>
+        <text x="235" y="83">-uX</text><text x="270" y="83">-uY</text><text x="305" y="83">-uZ</text><text x="340" y="83">-u</text>
+      </g>
+      <!-- Row 1 (for point 1, u equation) -->
+      <rect x="25" y="88" width="430" height="25" rx="3" fill="#dce8f5" opacity="0.6"/>
+      <g font-family="JetBrains Mono,monospace" font-size="11" fill="var(--blue)" text-anchor="middle">
+        <text x="55" y="105">X₁</text><text x="75" y="105">Y₁</text><text x="95" y="105">Z₁</text><text x="115" y="105">1</text>
+        <text x="145" y="105">0</text><text x="165" y="105">0</text><text x="185" y="105">0</text><text x="205" y="105">0</text>
+        <text x="237" y="105">-u₁X₁</text><text x="275" y="105">-u₁Y₁</text><text x="310" y="105">-u₁Z₁</text><text x="345" y="105">-u₁</text>
+      </g>
+      <text x="425" y="105" font-size="10" fill="var(--blue)" font-style="italic">← u eqn, pt 1</text>
+      <!-- Row 2 (for point 1, v equation) -->
+      <rect x="25" y="115" width="430" height="25" rx="3" fill="#e8f5f0" opacity="0.6"/>
+      <g font-family="JetBrains Mono,monospace" font-size="11" fill="var(--accent-2)" text-anchor="middle">
+        <text x="55" y="132">0</text><text x="75" y="132">0</text><text x="95" y="132">0</text><text x="115" y="132">0</text>
+        <text x="145" y="132">X₁</text><text x="165" y="132">Y₁</text><text x="185" y="132">Z₁</text><text x="205" y="132">1</text>
+        <text x="237" y="132">-v₁X₁</text><text x="275" y="132">-v₁Y₁</text><text x="310" y="132">-v₁Z₁</text><text x="345" y="132">-v₁</text>
+      </g>
+      <text x="425" y="132" font-size="10" fill="var(--accent-2)" font-style="italic">← v eqn, pt 1</text>
+
+      <!-- Dots -->
+      <text x="240" y="158" text-anchor="middle" font-size="16" fill="var(--ink-soft)">⋮   ⋮   ⋮   ⋮   ⋮   ⋮   ⋮   ⋮   ⋮   ⋮   ⋮   ⋮</text>
+
+      <!-- Last 2 rows for point N -->
+      <rect x="25" y="170" width="430" height="25" rx="3" fill="#dce8f5" opacity="0.4"/>
+      <text x="240" y="187" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="var(--blue)">Xₙ  Yₙ  Zₙ  1   0   0   0   0  -uₙXₙ  -uₙYₙ  -uₙZₙ  -uₙ</text>
+      <text x="425" y="187" font-size="10" fill="var(--blue)" font-style="italic">← u eqn, pt N</text>
+      <rect x="25" y="197" width="430" height="25" rx="3" fill="#e8f5f0" opacity="0.4"/>
+      <text x="240" y="214" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="var(--accent-2)">0   0   0   0   Xₙ  Yₙ  Zₙ  1  -vₙXₙ  -vₙYₙ  -vₙZₙ  -vₙ</text>
+      <text x="425" y="214" font-size="10" fill="var(--accent-2)" font-style="italic">← v eqn, pt N</text>
+
+      <!-- Right side labels -->
+      <text x="500" y="105" text-anchor="middle" font-size="11" fill="var(--ink-soft)">⎫</text>
+      <text x="500" y="132" text-anchor="middle" font-size="11" fill="var(--ink-soft)">⎭</text>
+      <text x="530" y="118" text-anchor="middle" font-size="10" fill="var(--ink-soft)">2 rows per</text>
+      <text x="530" y="134" text-anchor="middle" font-size="10" fill="var(--ink-soft)">point pair</text>
+
+      <!-- Dimensions label -->
+      <text x="240" y="248" text-anchor="middle" font-size="11" fill="var(--gold)">This lab: N=486 → A is (972 × 12). Solve A·m = 0 for 12-vector m.</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 7</span>The A matrix: 2 rows per known 3D-2D correspondence. The 12-element vector m, when reshaped to 3×4, is the projection matrix M. The top half of each row pair handles the u (horizontal) constraint; the bottom half handles v (vertical).</figcaption>
+  </figure>
+
+  <div class="box syntax">
+    <span class="lab">Syntax — building the A matrix (from compute_projection_matrix)</span>
+    <pre class="code-block"><span class="kw">def</span> <span class="fn">compute_projection_matrix</span>(P, p):
+    N = P.shape[<span class="nm">0</span>]   <span class="cm"># number of point pairs</span>
+    A = []
+
+    <span class="kw">for</span> i <span class="kw">in</span> range(N):
+        X, Y, Z = P[i]   <span class="cm"># unpack 3D world point</span>
+        u, v = p[i]      <span class="cm"># unpack 2D image point</span>
+
+        <span class="cm"># Row 1: u equation  [X,Y,Z,1, 0,0,0,0, -u*X,-u*Y,-u*Z,-u]</span>
+        A.append([X, Y, Z, <span class="nm">1</span>, <span class="nm">0</span>, <span class="nm">0</span>, <span class="nm">0</span>, <span class="nm">0</span>, -u*X, -u*Y, -u*Z, -u])
+        <span class="cm"># Row 2: v equation  [0,0,0,0, X,Y,Z,1, -v*X,-v*Y,-v*Z,-v]</span>
+        A.append([<span class="nm">0</span>, <span class="nm">0</span>, <span class="nm">0</span>, <span class="nm">0</span>, X, Y, Z, <span class="nm">1</span>, -v*X, -v*Y, -v*Z, -v])
+
+    A = np.array(A)   <span class="cm"># shape: (2N, 12)</span>
+    <span class="kw">return</span> A</pre>
+  </div>
+</section>
+
+<section id="svd">
+  <h2 class="sec"><span class="num">8</span>Solving Am = 0 via SVD</h2>
+  <p class="lede">We have a (2N × 12) matrix A and want the non-trivial 12-vector m such that Am ≈ 0. This is a classic least-squares null-space problem — and SVD solves it in one step.</p>
+
+  <h3>Why the Last Row of V^T</h3>
+  <p>SVD decomposes A = U Σ V^T. The singular values (diagonal of Σ) are ordered largest to smallest. The last row of V^T corresponds to the <em>smallest</em> singular value — meaning A times that vector is as close to zero as any unit-norm vector can make it. That's exactly what we want: the m minimising ‖Am‖.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="sva" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4b4239"/></marker></defs>
+      <text x="350" y="20" text-anchor="middle" font-size="13" fill="#4b4239" font-weight="600">SVD decomposes A → the last row of V^T is the solution m</text>
+
+      <!-- A -->
+      <rect x="20" y="55" width="80" height="140" rx="8" fill="#fbf4e3" stroke="var(--gold)" stroke-width="2"/>
+      <text x="60" y="88" text-anchor="middle" font-size="12" fill="var(--gold)" font-weight="700">A</text>
+      <text x="60" y="105" text-anchor="middle" font-size="10" fill="var(--gold)">972</text>
+      <text x="60" y="120" text-anchor="middle" font-size="10" fill="var(--gold)">×</text>
+      <text x="60" y="135" text-anchor="middle" font-size="10" fill="var(--gold)">12</text>
+
+      <!-- = -->
+      <text x="117" y="130" text-anchor="middle" font-size="20" fill="var(--ink)">=</text>
+
+      <!-- U -->
+      <rect x="130" y="55" width="80" height="140" rx="8" fill="#dce8f5" stroke="var(--blue)" stroke-width="1.5"/>
+      <text x="170" y="88" text-anchor="middle" font-size="12" fill="var(--blue)" font-weight="700">U</text>
+      <text x="170" y="105" text-anchor="middle" font-size="10" fill="var(--blue)">972×972</text>
+      <text x="170" y="130" text-anchor="middle" font-size="10" fill="var(--blue)">orthogonal</text>
+
+      <!-- Σ -->
+      <rect x="223" y="55" width="80" height="140" rx="8" fill="#e8f5f0" stroke="var(--accent-2)" stroke-width="1.5"/>
+      <text x="263" y="88" text-anchor="middle" font-size="14" fill="var(--accent-2)" font-weight="700">Σ</text>
+      <text x="263" y="105" text-anchor="middle" font-size="10" fill="var(--accent-2)">972×12</text>
+      <text x="263" y="120" text-anchor="middle" font-size="10" fill="var(--accent-2)">σ₁≥σ₂≥…≥σ₁₂</text>
+      <text x="263" y="148" text-anchor="middle" font-size="10" fill="var(--accent-2)">diagonal +</text>
+      <text x="263" y="163" text-anchor="middle" font-size="10" fill="var(--accent-2)">zero rows</text>
+
+      <!-- V^T -->
+      <rect x="315" y="55" width="80" height="140" rx="8" fill="#fde8e8" stroke="var(--K)" stroke-width="2.5"/>
+      <text x="355" y="88" text-anchor="middle" font-size="12" fill="var(--K)" font-weight="700">V^T</text>
+      <text x="355" y="105" text-anchor="middle" font-size="10" fill="var(--K)">12×12</text>
+      <text x="355" y="130" text-anchor="middle" font-size="10" fill="var(--K)">orthogonal</text>
+
+      <!-- Highlight last row of V^T -->
+      <rect x="316" y="171" width="78" height="22" rx="4" fill="var(--K)" opacity="0.25"/>
+      <rect x="316" y="171" width="78" height="22" rx="4" fill="none" stroke="var(--K)" stroke-width="2"/>
+      <text x="355" y="186" text-anchor="middle" font-size="10" fill="var(--K)" font-weight="700">← last row!</text>
+
+      <!-- Arrow to m -->
+      <line x1="400" y1="182" x2="455" y2="182" stroke="var(--K)" stroke-width="2" marker-end="url(#sva)"/>
+
+      <!-- m vector -->
+      <rect x="458" y="160" width="100" height="42" rx="8" fill="#fde8e8" stroke="var(--K)" stroke-width="2.5"/>
+      <text x="508" y="176" text-anchor="middle" font-size="12" fill="var(--K)" font-weight="700">m = Vt[-1]</text>
+      <text x="508" y="193" text-anchor="middle" font-size="10" fill="var(--K)">12-element vector</text>
+
+      <!-- Arrow to reshape -->
+      <line x1="558" y1="182" x2="610" y2="182" stroke="var(--K)" stroke-width="2" marker-end="url(#sva)"/>
+
+      <!-- M matrix -->
+      <rect x="613" y="155" width="75" height="55" rx="8" fill="#fde8e8" stroke="var(--K)" stroke-width="2.5"/>
+      <text x="650" y="177" text-anchor="middle" font-size="12" fill="var(--K)" font-weight="700">M</text>
+      <text x="650" y="195" text-anchor="middle" font-size="10" fill="var(--K)">3×4</text>
+
+      <text x="583" y="200" text-anchor="middle" font-size="10" fill="var(--K)">.reshape(3,4)</text>
+
+      <!-- Sigma explanation -->
+      <text x="263" y="210" text-anchor="middle" font-size="10" fill="var(--accent-2)" font-style="italic">σ₁₂ = smallest → Vt[-1]·A→≈0</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 8</span>SVD of A = UΣV^T. The last row of V^T (= last column of V) corresponds to the smallest singular value σ₁₂ and minimises ‖Am‖ subject to ‖m‖=1. This is the null space of A — the unique solution to our calibration problem.</figcaption>
+  </figure>
+
+  <div class="box syntax">
+    <span class="lab">Syntax — SVD solution for M</span>
+    <pre class="code-block"><span class="cm"># Solve Am = 0 using SVD</span>
+U, S, Vt = np.linalg.<span class="fn">svd</span>(A)   <span class="cm"># Full SVD decomposition</span>
+<span class="cm"># U: (972,972), S: (12,) — singular values, Vt: (12,12)</span>
+<span class="cm"># Note: np.linalg.svd returns V^T directly (Vt), not V</span>
+
+m = Vt[-<span class="nm">1</span>]                    <span class="cm"># last row of V^T = null space vector</span>
+<span class="cm"># Vt[-1] is equivalent to Vt[11] (last of 12 rows)</span>
+
+M = m.reshape(<span class="nm">3</span>, <span class="nm">4</span>)            <span class="cm"># reshape 12-vector to 3×4 projection matrix</span>
+
+<span class="cm"># Sanity check: verify Am ≈ 0 (residual should be tiny)</span>
+residual = np.<span class="fn">dot</span>(A, m)
+print(f"Residual norm: {np.linalg.norm(residual):.6f}")  <span class="cm"># should be near 0</span></pre>
+  </div>
+
+  <div class="box pitfall">
+    <span class="lab">np.linalg.svd returns V^T not V — don't confuse them</span>
+    <p>Many textbooks define SVD as A = UΣV^T and store the columns of V. NumPy's <code>np.linalg.svd</code> returns Vt where each <em>row</em> is an eigenvector (so Vt is V^T). The null-space solution is the <em>last row</em> of Vt (= <code>Vt[-1]</code>), corresponding to the smallest singular value. If you mistakenly use <code>V[:, -1]</code> you'd be accessing the last column of V^T, which is the row — same thing! But <code>Vt[:, -1]</code> would be the last column of V^T, which is wrong.</p>
+  </div>
+
+  <div class="box intuition">
+    <span class="lab">Why the null space = the solution</span>
+    <p>The system Am = 0 is homogeneous — any scaling of m (e.g. 2m) is also a solution. Projection matrices are defined up to scale, so this is fine. SVD finds the unit-norm vector m that minimises ‖Am‖. With enough well-conditioned point pairs (this lab uses 486), the smallest singular value is near zero and its corresponding right singular vector is the unique answer in the null space of A.</p>
+  </div>
+</section>
+<section id="rq">
+  <h2 class="sec"><span class="num">9</span>RQ Decomposition — Recovering K and R from M</h2>
+  <p class="lede">SVD gives us M as a single 3×4 matrix. But we want K and R separately. RQ decomposition is the algebraic tool that factors the 3×3 left part of M into an upper-triangular matrix K times an orthogonal matrix R.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 250" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="rqa" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4b4239"/></marker></defs>
+      <text x="350" y="20" text-anchor="middle" font-size="13" fill="#4b4239" font-weight="600">RQ decomposition: M = K[R|t] → extract K and R step by step</text>
+
+      <!-- Step 1: split M -->
+      <rect x="20" y="45" width="200" height="120" rx="9" fill="var(--card)" stroke="var(--K)" stroke-width="2"/>
+      <text x="120" y="68" text-anchor="middle" font-size="12" fill="var(--K)" font-weight="700">Step 1: Split M</text>
+      <text x="120" y="90" text-anchor="middle" font-size="12" fill="var(--K)">M = [A | b]</text>
+      <text x="120" y="112" text-anchor="middle" font-size="11" fill="var(--K)">A = M[:, 0:3]  (3×3)</text>
+      <text x="120" y="132" text-anchor="middle" font-size="11" fill="var(--K)">b = M[:, 3]    (3×1)</text>
+      <text x="120" y="152" text-anchor="middle" font-size="10" fill="var(--K)" font-style="italic">A = K·R</text>
+
+      <line x1="220" y1="105" x2="258" y2="105" stroke="var(--ink)" stroke-width="2" marker-end="url(#rqa)"/>
+
+      <!-- Step 2: RQ -->
+      <rect x="262" y="45" width="200" height="120" rx="9" fill="var(--card)" stroke="var(--R)" stroke-width="2"/>
+      <text x="362" y="68" text-anchor="middle" font-size="12" fill="var(--R)" font-weight="700">Step 2: RQ decompose A</text>
+      <text x="362" y="90" text-anchor="middle" font-size="11" fill="var(--R)">K, R = scipy.linalg.rq(A)</text>
+      <text x="362" y="110" text-anchor="middle" font-size="11" fill="var(--R)">K: upper triangular (= K)</text>
+      <text x="362" y="128" text-anchor="middle" font-size="11" fill="var(--R)">R: orthogonal (= rotation)</text>
+      <text x="362" y="150" text-anchor="middle" font-size="10" fill="var(--R)" font-style="italic">like QR but factored in reverse</text>
+
+      <line x1="462" y1="105" x2="500" y2="105" stroke="var(--ink)" stroke-width="2" marker-end="url(#rqa)"/>
+
+      <!-- Step 3: sign fix + normalize -->
+      <rect x="504" y="45" width="180" height="145" rx="9" fill="var(--card)" stroke="var(--gold)" stroke-width="2.5"/>
+      <text x="594" y="68" text-anchor="middle" font-size="12" fill="var(--gold)" font-weight="700">Step 3: Fix signs &amp; scale</text>
+      <text x="594" y="88" text-anchor="middle" font-size="11" fill="var(--gold)">T = diag(sign(diag(K)))</text>
+      <text x="594" y="106" text-anchor="middle" font-size="11" fill="var(--gold)">K = K · T  (pos diag)</text>
+      <text x="594" y="124" text-anchor="middle" font-size="11" fill="var(--gold)">R = T · R</text>
+      <text x="594" y="143" text-anchor="middle" font-size="11" fill="var(--gold)">t = K⁻¹ · b</text>
+      <text x="594" y="162" text-anchor="middle" font-size="11" fill="var(--gold)">K = K / K[2,2]</text>
+      <text x="594" y="180" text-anchor="middle" font-size="10" fill="var(--gold)" font-style="italic">normalise so K[2,2]=1</text>
+
+      <text x="350" y="222" text-anchor="middle" font-size="11" fill="var(--ink-soft)" font-style="italic">Result: K (intrinsics) and R (rotation) and t (translation) fully separated</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 9</span>The RQ decomposition pipeline. A = K·R because M = K[R|t] → the left 3×3 block A = KR. RQ decomposition factors any 3×3 matrix into upper-triangular × orthogonal (exactly K × R). The sign fix ensures focal lengths are positive; the scale normalisation sets K[2,2]=1.</figcaption>
+  </figure>
+
+  <div class="box intuition">
+    <span class="lab">Why RQ not QR?</span>
+    <p>Standard QR decomposition gives A = Q·R where Q is orthogonal (unitary) and R is upper triangular. But we want A = K·R where <em>K</em> is upper triangular and <em>R</em> is orthogonal — the opposite order. This is called RQ decomposition. SciPy's <code>scipy.linalg.rq(A)</code> gives exactly this: it returns (upper_triangular, orthogonal) satisfying A = rq_R × rq_Q — we use rq_R as K and rq_Q as the rotation R.</p>
+  </div>
+
+  <div class="box syntax">
+    <span class="lab">Syntax — complete RQ decomposition (from the lab)</span>
+    <pre class="code-block"><span class="kw">from</span> scipy.linalg <span class="kw">import</span> rq
+
+<span class="kw">def</span> <span class="fn">get_intrinsics_extrinsics</span>(M):
+    <span class="cm"># Step 1: split M = [A | b]</span>
+    A = M[:, <span class="nm">0</span>:<span class="nm">3</span>]    <span class="cm"># left 3×3 = K·R</span>
+    b = M[:, <span class="nm">3</span>]     <span class="cm"># rightmost column = K·R·t = K·t_cam</span>
+
+    <span class="cm"># Step 2: RQ decompose to get K and R</span>
+    K, R = <span class="fn">rq</span>(A)    <span class="cm"># K: upper triangular, R: orthogonal</span>
+
+    <span class="cm"># Step 3: fix signs (focal lengths must be positive)</span>
+    T = np.diag(np.sign(np.diag(K)))  <span class="cm"># diagonal matrix of signs</span>
+    K = np.<span class="fn">dot</span>(K, T)   <span class="cm"># flip columns of K where needed</span>
+    R = np.<span class="fn">dot</span>(T, R)   <span class="cm"># flip corresponding rows of R</span>
+
+    <span class="cm"># Step 4: recover t</span>
+    t = np.<span class="fn">dot</span>(np.linalg.<span class="fn">inv</span>(K), b)
+
+    <span class="cm"># Step 5: normalize so K[2,2] = 1 (homogeneous)</span>
+    scale = K[<span class="nm">2</span>, <span class="nm">2</span>]
+    K = K / scale
+    t = t / scale
+
+    <span class="kw">return</span> K, R, t
+
+<span class="cm"># Apply and zero out skew (theta = 90° assumption)</span>
+K, R, t = get_intrinsics_extrinsics(M_estimated)
+K_final = K.copy()
+K_final[<span class="nm">0</span>, <span class="nm">1</span>] = <span class="nm">0</span>    <span class="cm"># force zero skew since axes are perpendicular</span></pre>
+  </div>
+
+  <div class="box def">
+    <span class="lab">Why the sign fix? — T = diag(sign(diag(K)))</span>
+    <p>RQ decomposition is not unique — you can flip the sign of any column of K and simultaneously flip the corresponding row of R and get another valid decomposition. The physical constraint is that diagonal elements of K (f_x, f_y, K[2,2]) must be positive (focal lengths are positive). <code>T = np.diag(np.sign(np.diag(K)))</code> creates a diagonal matrix whose entries are +1 where K's diagonal is already positive, and −1 where it's negative. Right-multiplying K by T and left-multiplying R by T flips the signs appropriately while maintaining A = K·R.</p>
+  </div>
+</section>
+<section id="corners">
+  <h2 class="sec"><span class="num">10</span>Corner Detection &amp; World Points Setup</h2>
+  <p class="lede">Before any linear algebra, you need the raw data: 3D world coordinates and their corresponding 2D pixel coordinates. This section covers exactly how the lab builds both.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 250" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="coa" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4b4239"/></marker></defs>
+      <text x="350" y="20" text-anchor="middle" font-size="13" fill="#4b4239" font-weight="600">Checkerboard world coordinates — a 9×6 grid at one Z-plane</text>
+
+      <!-- Checkerboard grid -->
+      <rect x="30" y="40" width="270" height="195" rx="8" fill="var(--card)" stroke="var(--world)" stroke-width="2"/>
+      <text x="165" y="62" text-anchor="middle" font-size="11" fill="var(--world)" font-weight="600">Physical checkerboard (9×6 corners)</text>
+      <!-- Grid lines for checkerboard -->
+      <g stroke="var(--world)" stroke-width="0.8" opacity="0.4">
+        <line x1="62" y1="72" x2="62" y2="220"/><line x1="92" y1="72" x2="92" y2="220"/>
+        <line x1="122" y1="72" x2="122" y2="220"/><line x1="152" y1="72" x2="152" y2="220"/>
+        <line x1="182" y1="72" x2="182" y2="220"/><line x1="212" y1="72" x2="212" y2="220"/>
+        <line x1="242" y1="72" x2="242" y2="220"/><line x1="272" y1="72" x2="272" y2="220"/>
+        <line x1="40" y1="100" x2="292" y2="100"/><line x1="40" y1="130" x2="292" y2="130"/>
+        <line x1="40" y1="160" x2="292" y2="160"/><line x1="40" y1="190" x2="292" y2="190"/>
+        <line x1="40" y1="220" x2="292" y2="220"/>
+      </g>
+      <!-- Corner dots -->
+      <g fill="var(--gold)">
+        <circle cx="62" cy="72" r="3"/><circle cx="92" cy="72" r="3"/><circle cx="122" cy="72" r="3"/>
+        <circle cx="62" cy="100" r="3"/><circle cx="92" cy="100" r="4" stroke="var(--K)" stroke-width="2" fill="none"/>
+        <!-- highlight (0,0) corner -->
+        <circle cx="62" cy="72" r="5" fill="var(--K)"/>
+      </g>
+
+      <!-- Axis labels -->
+      <line x1="40" y1="225" x2="100" y2="225" stroke="var(--world)" stroke-width="2" marker-end="url(#coa)"/>
+      <text x="105" y="229" font-size="11" fill="var(--world)">X (col × 25mm)</text>
+      <line x1="35" y1="220" x2="35" y2="160" stroke="var(--world)" stroke-width="2" marker-end="url(#coa)"/>
+      <text x="10" y="190" font-size="11" fill="var(--world)" transform="rotate(-90,10,190)">Y (row × 25mm)</text>
+
+      <!-- Z label -->
+      <text x="165" y="240" text-anchor="middle" font-size="11" fill="var(--world)">Z = 400mm (for image c1)</text>
+
+      <!-- Arrow to coord list -->
+      <line x1="305" y1="140" x2="360" y2="140" stroke="var(--ink)" stroke-width="2" marker-end="url(#coa)"/>
+
+      <!-- Coordinate table -->
+      <rect x="365" y="50" width="310" height="185" rx="8" fill="var(--paper-2)" stroke="var(--rule)" stroke-width="1.5"/>
+      <text x="520" y="72" text-anchor="middle" font-size="11" fill="var(--ink)" font-weight="600">3D World Points (X, Y, Z) for c1</text>
+      <g font-family="JetBrains Mono,monospace" font-size="11" fill="var(--ink)">
+        <text x="400" y="95">corner (0,0):  X=0,   Y=0,   Z=400</text>
+        <text x="400" y="115">corner (1,0):  X=25,  Y=0,   Z=400</text>
+        <text x="400" y="135">corner (2,0):  X=50,  Y=0,   Z=400</text>
+        <text x="520" y="155" text-anchor="middle">⋮</text>
+        <text x="400" y="175">corner (8,5):  X=200, Y=125, Z=400</text>
+      </g>
+      <text x="520" y="225" text-anchor="middle" font-size="10" fill="var(--world)" font-style="italic">54 corners per image × 9 images = 486 total</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 10</span>World coordinate assignment for the 9×6 checkerboard. Corner (col, row) gets X = col × 25mm, Y = row × 25mm, Z = the Z-coordinate for that image (from the CSV). The lab uses <code>np.mgrid</code> to generate all X,Y values, then sets Z for each image separately.</figcaption>
+  </figure>
+
+  <div class="box syntax">
+    <span class="lab">Syntax — building world and image point arrays</span>
+    <pre class="code-block">CHECKERBOARD_DIMS = (<span class="nm">9</span>, <span class="nm">6</span>)   <span class="cm"># (cols-1, rows-1) of interior corners</span>
+SQUARE_SIZE = <span class="nm">25</span>              <span class="cm"># mm per square</span>
+
+<span class="cm"># Create the base (X,Y) grid — same for every image</span>
+base_objp = np.zeros((CHECKERBOARD_DIMS[<span class="nm">0</span>] * CHECKERBOARD_DIMS[<span class="nm">1</span>], <span class="nm">3</span>), np.float32)
+base_objp[:, :<span class="nm">2</span>] = np.mgrid[<span class="nm">0</span>:CHECKERBOARD_DIMS[<span class="nm">0</span>], <span class="nm">0</span>:CHECKERBOARD_DIMS[<span class="nm">1</span>]].T.reshape(-<span class="nm">1</span>, <span class="nm">2</span>)
+base_objp *= SQUARE_SIZE       <span class="cm"># scale from grid indices to mm</span>
+<span class="cm"># shape: (54, 3) — 54 corners, columns X, Y, Z (Z still 0)</span>
+
+<span class="cm"># For each image: copy and set the Z coordinate</span>
+current_objp = base_objp.copy()
+current_objp[:, <span class="nm">2</span>] = valid_z[idx]   <span class="cm"># e.g. 400.0 for image c1</span>
+
+<span class="cm"># Detect corners in image (cv2 allowed for this step)</span>
+ret, corners = cv2.findChessboardCorners(gray, CHECKERBOARD_DIMS, <span class="kw">None</span>)
+
+<span class="kw">if</span> ret:
+    term = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, <span class="nm">30</span>, <span class="nm">0.001</span>)
+    corners2 = cv2.cornerSubPix(gray, corners, (<span class="nm">11</span>,<span class="nm">11</span>), (-<span class="nm">1</span>,-<span class="nm">1</span>), term)
+    img_points.append(corners2.reshape(-<span class="nm">1</span>, <span class="nm">2</span>))    <span class="cm"># shape: (54, 2)</span>
+    obj_points.append(current_objp)               <span class="cm"># shape: (54, 3)</span>
+
+<span class="cm"># After all images: stack into single arrays</span>
+PTS_3D = np.vstack(obj_points)   <span class="cm"># shape: (486, 3)</span>
+PTS_2D = np.vstack(img_points)   <span class="cm"># shape: (486, 2)</span></pre>
+  </div>
+
+  <div class="box def">
+    <span class="lab">Key syntax: np.mgrid[0:9, 0:6].T.reshape(-1, 2)</span>
+    <ul>
+      <li><code>np.mgrid[0:9, 0:6]</code> — creates a grid of shape (2, 9, 6): first array has column indices 0–8 repeated across rows; second has row indices 0–5 repeated across columns.</li>
+      <li><code>.T</code> — transposes to (6, 9, 2).</li>
+      <li><code>.reshape(-1, 2)</code> — flattens to (54, 2): 54 corners, each with (col_idx, row_idx). Multiplied by 25mm gives (X, Y) in mm.</li>
+    </ul>
+  </div>
+
+  <div class="box def">
+    <span class="lab">cv2.cornerSubPix — why it's there and what it does</span>
+    <p><code>cv2.findChessboardCorners</code> finds corners to integer pixel accuracy. <code>cv2.cornerSubPix</code> refines those locations to <em>sub-pixel</em> accuracy using the gradient information in a (11×11) neighbourhood. Even a 0.1-pixel error in the 2D coordinates affects the calibration accuracy — this step is essential for quality results. The termination criteria <code>(TERM_CRITERIA_EPS + TERM_CRITERIA_MAX_ITER, 30, 0.001)</code> means: iterate until change is &lt;0.001 pixels OR 30 iterations, whichever comes first.</p>
+  </div>
+</section>
+
+<section id="syntax">
+  <h2 class="sec"><span class="num">11</span>Full Code Walkthrough — Every Syntax Pattern</h2>
+  <p class="lede">A rapid-fire reference for every line of lab code that might be asked about in a viva or exam.</p>
+
+  <div class="box syntax">
+    <span class="lab">Pattern 1 — Unpack 3D and 2D point arrays</span>
+    <pre class="code-block">X, Y, Z = P[i]       <span class="cm"># unpack row i of (N,3) array into 3 scalars</span>
+u, v = p[i]          <span class="cm"># unpack row i of (N,2) array into 2 scalars</span>
+
+<span class="cm"># Alternative (vectorized, if you want to avoid the loop):</span>
+X = P[:, <span class="nm">0</span>]          <span class="cm"># all X coordinates, shape (N,)</span>
+Y = P[:, <span class="nm">1</span>]          <span class="cm"># all Y coordinates</span>
+Z = P[:, <span class="nm">2</span>]          <span class="cm"># all Z coordinates</span></pre>
+  </div>
+
+  <div class="box syntax">
+    <span class="lab">Pattern 2 — Build and solve the DLT system</span>
+    <pre class="code-block">A = np.array(A_list)              <span class="cm"># convert list of rows to array (2N, 12)</span>
+U, S, Vt = np.linalg.<span class="fn">svd</span>(A)      <span class="cm"># full SVD</span>
+<span class="cm"># S: singular values in DESCENDING order → S[-1] is smallest</span>
+m = Vt[-<span class="nm">1</span>]                       <span class="cm"># last row of V^T = null space</span>
+M = m.reshape(<span class="nm">3</span>, <span class="nm">4</span>)             <span class="cm"># reshape to projection matrix</span></pre>
+  </div>
+
+  <div class="box syntax">
+    <span class="lab">Pattern 3 — Access sub-matrices of M</span>
+    <pre class="code-block">A_part = M[:, <span class="nm">0</span>:<span class="nm">3</span>]   <span class="cm"># first 3 columns (3×3) = K·R</span>
+b_part = M[:, <span class="nm">3</span>]    <span class="cm"># last column (3×1) = K·t (note: 1D vector)</span>
+
+<span class="cm"># Indices reminder:</span>
+K[<span class="nm">0</span>,<span class="nm">0</span>] <span class="cm"># fx (top-left)</span>
+K[<span class="nm">1</span>,<span class="nm">1</span>] <span class="cm"># fy</span>
+K[<span class="nm">0</span>,<span class="nm">2</span>] <span class="cm"># cx</span>
+K[<span class="nm">1</span>,<span class="nm">2</span>] <span class="cm"># cy</span>
+K[<span class="nm">0</span>,<span class="nm">1</span>] <span class="cm"># skew γ (set to 0 in this lab)</span>
+K[<span class="nm">2</span>,<span class="nm">2</span>] <span class="cm"># normalisation scale (should be 1 after normalisation)</span></pre>
+  </div>
+
+  <div class="box syntax">
+    <span class="lab">Pattern 4 — Sign fixing and normalisation</span>
+    <pre class="code-block"><span class="cm"># Ensure positive diagonal in K:</span>
+T = np.diag(np.sign(np.diag(K)))   <span class="cm"># e.g. if K diag = [-1422, 1421, -1] → T = diag([-1,1,-1])</span>
+K = np.<span class="fn">dot</span>(K, T)                   <span class="cm"># K @ T: flip sign of columns where T=-1</span>
+R = np.<span class="fn">dot</span>(T, R)                   <span class="cm"># T @ R: flip sign of rows where T=-1</span>
+
+<span class="cm"># Recover translation:</span>
+t = np.<span class="fn">dot</span>(np.linalg.<span class="fn">inv</span>(K), b)   <span class="cm"># K^{-1} * (K*t_cam) = t_cam</span>
+
+<span class="cm"># Normalise K (homogeneous scaling removes ambiguity):</span>
+scale = K[<span class="nm">2</span>, <span class="nm">2</span>]
+K = K / scale
+t = t / scale
+
+<span class="cm"># Zero out skew (assumption θ = 90°):</span>
+K[<span class="nm">0</span>, <span class="nm">1</span>] = <span class="nm">0</span></pre>
+  </div>
+
+  <div class="box syntax">
+    <span class="lab">Pattern 5 — Reading the Z coordinates from CSV</span>
+    <pre class="code-block">df = pd.<span class="fn">read_csv</span>(csv_path, header=<span class="kw">None</span>)  <span class="cm"># no header row</span>
+z_coords = df.values.<span class="fn">flatten</span>().tolist()   <span class="cm"># numpy array → Python list</span>
+<span class="cm"># flatten(): collapses (9,1) or (1,9) shape to (9,) first</span>
+z_coords = [<span class="fn">float</span>(z) <span class="kw">for</span> z <span class="kw">in</span> z_coords]   <span class="cm"># ensure all are floats</span>
+<span class="cm"># z_coords = [400.0, 500.0, 600.0, 700.0, 800.0, 900.0, 1000.0, 1100.0, 1200.0]</span></pre>
+  </div>
+
+  <div class="box pitfall">
+    <span class="lab">M is determined only up to scale — normalisation matters</span>
+    <p>The DLT gives M as the null-space vector, defined only up to a scalar multiple. Two matrices M and 2M represent the same projection (since we always divide by the third row anyway). The RQ decomposition and normalisation <code>K = K / K[2,2]</code> ensure K is in canonical form with K[2,2]=1 — this is necessary before comparing values between different calibrations or using them in further computations.</p>
+  </div>
+</section>
+<section id="results">
+  <h2 class="sec"><span class="num">12</span>Interpreting the Results</h2>
+  <p class="lede">The lab's output is a K matrix with 4 meaningful numbers. Here's how to read and verify them.</p>
+
+  <div class="box worked">
+    <span class="lab">Lab output — the K matrix annotated</span>
+    <pre class="code-block"><span class="cm">Intrinsic Matrix K:</span>
+[[<span class="nm">1422.0</span>   <span class="nm">0.0</span>   <span class="nm">511.9</span>]    <span class="cm"># row 0: fx, skew(=0), cx</span>
+ [   <span class="nm">0.0</span> <span class="nm">1421.3</span>   <span class="nm">512.3</span>]    <span class="cm"># row 1: 0, fy, cy</span>
+ [   <span class="nm">0.0</span>   <span class="nm">0.0</span>     <span class="nm">1.0</span>]]   <span class="cm"># row 2: 0, 0, 1 (always)</span>
+
+<span class="cm">fx = 1422 pixels    → focal length in horizontal pixels</span>
+<span class="cm">fy = 1421 pixels    → focal length in vertical pixels</span>
+<span class="cm">cx = 511.9 pixels   → principal point X ≈ W/2 = 512</span>
+<span class="cm">cy = 512.3 pixels   → principal point Y ≈ H/2 = 512</span>
+<span class="cm">skew = 0            → by assumption (θ = 90°)</span></pre>
+  </div>
+
+  <div class="box intuition">
+    <span class="lab">Sanity checks — how to know if your calibration is reasonable</span>
+    <ul>
+      <li><strong>fx ≈ fy:</strong> ratio is 1422/1421 = 1.0007 — essentially equal, confirming square pixels. Large deviation (&gt;5%) suggests non-square pixels or a bug.</li>
+      <li><strong>cx ≈ W/2, cy ≈ H/2:</strong> for a 1024×1024 image, W/2 = 512. Got 511.9 and 512.3 — within 0.3 pixels of ideal. Large offsets suggest the lens isn't centred on the sensor.</li>
+      <li><strong>Re-projection error:</strong> project PTS_3D back through M_estimated and compare to PTS_2D. Error should be &lt;1 pixel for a good calibration. Sub-pixel error indicates excellent calibration.</li>
+      <li><strong>Projection matrix M:</strong> the last row of M (normalised by M[2,3]) encodes the principal ray direction. For a frontal-facing camera, M[2,:3] should be approximately [0,0,1] in camera coordinates.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="prep">
+  <h2 class="sec"><span class="num">13</span>Cheat-Sheet &amp; Interview Q&amp;A</h2>
+  <p class="lede">Every formula and syntax pattern in one screen, then the questions a viva is guaranteed to ask.</p>
+
+  <h3>Formula &amp; Syntax Wall</h3>
+  <div class="pillrow">
+    <span class="pill">u = fx·X/Z + cx,  v = fy·Y/Z + cy</span>
+    <span class="pill">s·p̃ = M · P̃  (homogeneous)</span>
+    <span class="pill">M = K[R|t]  (3×4)</span>
+    <span class="pill">K upper triangular: [[fx,γ,cx],[0,fy,cy],[0,0,1]]</span>
+    <span class="pill">R orthogonal: R^T=R^{-1}, det(R)=1</span>
+    <span class="pill">DLT rows: [X,Y,Z,1,0,0,0,0,-uX,-uY,-uZ,-u]</span>
+    <span class="pill">A·m = 0 → m = Vt[-1]</span>
+    <span class="pill">M = m.reshape(3,4)</span>
+    <span class="pill">A = M[:,0:3], b = M[:,3]</span>
+    <span class="pill">K,R = scipy.linalg.rq(A)</span>
+    <span class="pill">T = diag(sign(diag(K)))</span>
+    <span class="pill">t = inv(K)·b,  K=K/K[2,2]</span>
+    <span class="pill">base_objp *= SQUARE_SIZE</span>
+    <span class="pill">current_objp[:,2] = z</span>
+    <span class="pill">PTS_3D = np.vstack(obj_points)</span>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <caption>All notation in one place</caption>
+      <thead><tr><th>Symbol</th><th>Meaning</th><th>Shape/type</th><th>Lab variable</th></tr></thead>
+      <tbody>
+        <tr><td>M</td><td>Projection matrix (full camera model)</td><td>3×4</td><td><code>M_estimated</code></td></tr>
+        <tr><td>K</td><td>Intrinsic matrix (camera properties)</td><td>3×3 upper triangular</td><td><code>K_final</code></td></tr>
+        <tr><td>R</td><td>Rotation (camera orientation)</td><td>3×3 orthogonal</td><td><code>R</code></td></tr>
+        <tr><td>t</td><td>Translation vector</td><td>3×1</td><td><code>t</code></td></tr>
+        <tr><td>P</td><td>3D world point</td><td>(X,Y,Z,1)ᵀ</td><td><code>PTS_3D</code></td></tr>
+        <tr><td>p</td><td>2D image point (pixel)</td><td>(u,v)</td><td><code>PTS_2D</code></td></tr>
+        <tr><td>A</td><td>DLT constraint matrix</td><td>2N × 12</td><td><code>A</code></td></tr>
+        <tr><td>m</td><td>Vectorised M (unknowns)</td><td>12×1</td><td><code>m = Vt[-1]</code></td></tr>
+        <tr><td>fx, fy</td><td>Focal lengths in pixels</td><td>scalar</td><td><code>K[0,0], K[1,1]</code></td></tr>
+        <tr><td>cx, cy</td><td>Principal point</td><td>scalar</td><td><code>K[0,2], K[1,2]</code></td></tr>
+        <tr><td>γ</td><td>Skew (=0 in this lab)</td><td>scalar</td><td><code>K[0,1] = 0</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Interview Q&amp;A</h3>
+
+  <div class="box interview">
+    <span class="lab">What are the intrinsic parameters of a camera and what do each mean?</span>
+    <p><strong>f_x, f_y</strong> — focal length in pixel units along x and y axes. For square pixels f_x ≈ f_y. Equal to physical focal length divided by pixel pitch. <strong>(c_x, c_y)</strong> — the principal point: where the optical axis pierces the image plane, ideally at the image centre. <strong>γ</strong> — skew: non-orthogonality between pixel axes, zero for modern cameras. These are intrinsic (internal to the camera) because they're fixed properties of the lens/sensor — they don't change when you move the camera.</p>
+  </div>
+
+  <div class="box interview">
+    <span class="lab">Derive the two DLT equations for one point correspondence.</span>
+    <p>Start from \(s\tilde{p} = M\tilde{P}\): \(su = \mathbf{m}_1^T\mathbf{P}\), \(sv = \mathbf{m}_2^T\mathbf{P}\), \(s = \mathbf{m}_3^T\mathbf{P}\). Dividing: \(u = \mathbf{m}_1^T\mathbf{P}/\mathbf{m}_3^T\mathbf{P}\). Cross-multiply: \(u\cdot\mathbf{m}_3^T\mathbf{P} = \mathbf{m}_1^T\mathbf{P}\). Rearrange as a linear constraint on the 12 unknowns of M: \([X,Y,Z,1,0,0,0,0,-uX,-uY,-uZ,-u]\mathbf{m}=0\). Similarly for v: \([0,0,0,0,X,Y,Z,1,-vX,-vY,-vZ,-v]\mathbf{m}=0\). These are exactly the two rows added per point in the code.</p>
+  </div>
+
+  <div class="box interview">
+    <span class="lab">Why does SVD solve Am = 0, and which singular vector is the answer?</span>
+    <p>We have 2N equations in 12 unknowns, but the system is homogeneous (Am=0) — any scale of the solution is also a solution. SVD decomposes A = UΣV^T. The right singular vectors (rows of V^T) are ordered by their corresponding singular values, which measure how much A "stretches" each vector. The vector corresponding to the <em>smallest</em> singular value is stretched the least — i.e., A times it is closest to zero — making it the best solution to Am=0. This is <code>Vt[-1]</code> in NumPy's convention (V^T is returned directly).</p>
+  </div>
+
+  <div class="box interview">
+    <span class="lab">Why use RQ decomposition to recover K and R? Why not QR?</span>
+    <p>We have A = KR where K should be upper-triangular (the intrinsic matrix) and R orthogonal (rotation). This is the opposite order from QR (Q orthogonal, R upper-triangular). RQ decomposition gives exactly upper-triangular × orthogonal = K × R. SciPy's <code>rq(A)</code> directly computes this. QR would give the factors in the wrong order and we'd need to invert/transpose to get K and R separately.</p>
+  </div>
+
+  <div class="box interview">
+    <span class="lab">What is the sign fix step doing in the RQ decomposition code?</span>
+    <p>RQ decomposition is not unique — you can flip the sign of any pair (column of K, row of R) and still have A = KR. Physically, focal lengths (the diagonal of K) must be positive. <code>T = np.diag(np.sign(np.diag(K)))</code> creates a diagonal matrix with +1 where the diagonal is already positive, −1 where it's negative. Right-multiplying K by T flips the signs of K's columns; left-multiplying R by T flips the corresponding rows. This preserves A = KR while guaranteeing K's diagonal is positive.</p>
+  </div>
+
+  <div class="box interview">
+    <span class="lab">How many unknowns does M have? How many point correspondences are needed minimum?</span>
+    <p>M has 3×4 = 12 elements, but since it's defined up to scale, effectively 11 degrees of freedom. Each point pair gives 2 equations (u and v). Minimum to solve: 11/2 = 5.5 → need at least 6 point pairs. This lab uses 486 pairs for a highly over-determined, robust solution. More points average out noise — the SVD finds the least-squares solution automatically.</p>
+  </div>
+
+  <div class="box pitfall">
+    <span class="lab">Last-minute gotchas</span>
+    <ul>
+      <li><code>np.linalg.svd(A)</code> returns Vt (V^T), not V. The null-space solution is <code>Vt[-1]</code> (last row), not <code>Vt[:,-1]</code> (last column, which would be wrong).</li>
+      <li>Singular values from <code>np.linalg.svd</code> are in descending order — the smallest is <code>S[-1]</code>, corresponding to the last row of Vt.</li>
+      <li>The A matrix in the DLT has a strict structure: the u-row has the last 4 columns as <code>−uX, −uY, −uZ, −u</code> and the v-row has <code>−vX, −vY, −vZ, −v</code>. Mixing these up gives nonsense results.</li>
+      <li>After RQ decomposition, always check <code>np.allclose(K @ R, A)</code> to verify the factorisation is correct before using K and R for anything.</li>
+      <li>Skew is set to zero <em>after</em> RQ decomposition (<code>K_final[0,1] = 0</code>) as a post-processing step, not during — the RQ will still give a non-zero skew estimate which is discarded by assumption.</li>
+      <li>The 9 in CHECKERBOARD_DIMS means 9 interior corners in the horizontal direction — a standard 10×7 physical checkerboard has 9×6 interior corners (outer squares don't create visible interior corners).</li>
+      <li><code>scipy.linalg.rq</code> vs <code>np.linalg.qr</code> — these are different functions. Make sure to <code>from scipy.linalg import rq</code> and not <code>np.linalg.qr</code>.</li>
+    </ul>
+  </div>
+
+  <hr class="soft"/>
+  <p class="footnote">Covers the full arc: pinhole camera model and similar-triangles derivation → homogeneous coordinates turning division into matrix multiplication → the 3×4 projection matrix M = K[R|t] with every element labelled → all 5 intrinsic parameters with physical interpretations → extrinsic R and t → the DLT algorithm deriving 2 linear equations per 3D↔2D point pair → building the (972×12) A matrix → SVD solution finding the null space vector as the last row of V^T → RQ decomposition separating K and R from M, with the sign-fix derivation → checkerboard world coordinate setup with mgrid → all 5 key syntax patterns → sanity-checking the output (fx≈fy, cx≈W/2) → 6 interview Q&As + 7 last-minute gotchas. Actual lab numbers throughout: fx=1422, fy=1421, cx=512, cy=512, 486 point pairs, 9 Z-planes from 400 to 1200mm. Good luck. 🎯</p>
+</section>
+</div></body></html>

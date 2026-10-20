@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>k-Nearest Neighbours — PRMI Study Guide</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] },
+    svg: { fontCache: 'global' },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+
+<style>
+  :root{
+    --paper:#f4efe6;
+    --paper-2:#ece4d6;
+    --card:#fbf8f1;
+    --ink:#221d18;
+    --ink-soft:#4b4239;
+    --rule:#d8ccb8;
+    --accent:#8a2b1e;      /* oxblood */
+    --accent-2:#1f5c54;    /* deep teal */
+    --gold:#b8862f;
+    --blue:#2f5d8a;
+    --green:#3a6b3a;       /* worked-example green */
+    --shadow:rgba(60,42,20,.16);
+    --maxw:880px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 12% -10%, #fbf6ec 0%, transparent 45%),
+      radial-gradient(circle at 100% 0%, #efe7d8 0%, transparent 40%),
+      var(--paper);
+    color:var(--ink);
+    font-family:"Newsreader",Georgia,serif;
+    font-size:19px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* subtle paper grain */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.04;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 26px 120px;}
+
+  /* ---------- Masthead ---------- */
+  header.masthead{
+    text-align:center;padding:78px 0 38px;border-bottom:3px double var(--rule);margin-bottom:18px;
+  }
+  .kicker{
+    font-family:"JetBrains Mono",monospace;font-size:12.5px;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:22px;
+  }
+  header.masthead h1{
+    font-family:"Fraunces",serif;font-weight:600;font-size:clamp(40px,7vw,72px);line-height:.98;
+    margin:0 0 10px;letter-spacing:-.015em;
+  }
+  header.masthead h1 .ch{display:block;font-size:.36em;letter-spacing:.06em;color:var(--ink-soft);font-weight:500;margin-bottom:8px;}
+  .byline{font-style:italic;color:var(--ink-soft);font-size:18px;margin-top:14px;}
+  .badge{display:inline-block;margin-top:20px;font-family:"JetBrains Mono",monospace;font-size:11.5px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--accent-2);
+    border:1px solid var(--accent-2);border-radius:30px;padding:6px 16px;}
+
+  /* ---------- TOC ---------- */
+  nav.toc{
+    background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:26px 30px;margin:34px 0 50px;
+    box-shadow:0 12px 34px -22px var(--shadow);
+  }
+  nav.toc h2{font-family:"Fraunces",serif;font-size:15px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 16px;font-weight:600;}
+  nav.toc ol{margin:0;padding-left:0;list-style:none;counter-reset:toc -1;column-gap:48px;}
+  nav.toc li{counter-increment:toc;margin:7px 0;font-size:17px;}
+  nav.toc li::before{content:counter(toc,decimal) ".";font-family:"JetBrains Mono",monospace;color:var(--gold);
+    font-size:13px;margin-right:12px;}
+  nav.toc a{color:var(--ink);text-decoration:none;border-bottom:1px solid transparent;transition:.2s;}
+  nav.toc a:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* ---------- Sections ---------- */
+  section{margin:64px 0;scroll-margin-top:24px;}
+  h2.sec{
+    font-family:"Fraunces",serif;font-weight:600;font-size:clamp(28px,4.4vw,40px);line-height:1.06;
+    margin:0 0 6px;letter-spacing:-.01em;display:flex;align-items:baseline;gap:16px;
+  }
+  h2.sec .num{
+    font-family:"JetBrains Mono",monospace;font-size:.5em;color:var(--accent);
+    border:2px solid var(--accent);border-radius:9px;padding:3px 11px;flex:none;font-weight:600;
+  }
+  h2.sec + .lede{color:var(--ink-soft);font-style:italic;font-size:19px;margin:2px 0 26px;
+    border-bottom:1px solid var(--rule);padding-bottom:22px;}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:25px;margin:42px 0 10px;letter-spacing:-.01em;}
+  h3 .tag{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--accent-2);letter-spacing:.1em;
+    border:1px solid var(--accent-2);border-radius:5px;padding:1px 7px;margin-right:10px;vertical-align:middle;}
+  h4{font-family:"Fraunces",serif;font-weight:600;font-size:20px;margin:30px 0 8px;color:var(--ink);}
+  p{margin:14px 0;}
+  strong{font-weight:600;}
+  .term{font-weight:600;color:var(--accent);}
+  em{color:var(--ink-soft);}
+
+  /* ---------- Callouts ---------- */
+  .box{border-radius:13px;padding:20px 24px;margin:26px 0;border:1px solid var(--rule);
+    background:var(--card);box-shadow:0 10px 30px -24px var(--shadow);}
+  .box .lab{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    margin-bottom:8px;display:block;font-weight:600;}
+  .def{border-left:5px solid var(--accent-2);}
+  .def .lab{color:var(--accent-2);}
+  .intuition{border-left:5px solid var(--gold);background:#fbf4e3;}
+  .intuition .lab{color:var(--gold);}
+  .derive{border-left:5px solid var(--accent);background:#fbf0ed;}
+  .derive .lab{color:var(--accent);}
+  .pitfall{border-left:5px solid #9a3b2e;background:#faeeea;}
+  .pitfall .lab{color:#9a3b2e;}
+  .interview{border-left:5px solid var(--blue);background:#eef3f9;}
+  .interview .lab{color:var(--blue);}
+  .example{border-left:5px solid var(--green);background:#eef4ec;}
+  .example .lab{color:var(--green);}
+  .box p:first-of-type{margin-top:0;}
+  .box p:last-child{margin-bottom:0;}
+
+  /* numbered equations */
+  .eqwrap{display:flex;align-items:center;gap:14px;margin:22px 0;}
+  .eqwrap .eq{flex:1;overflow-x:auto;}
+  .eqwrap .tagn{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--ink-soft);flex:none;}
+
+  /* tables */
+  .tablewrap{overflow-x:auto;margin:26px 0;border:1px solid var(--rule);border-radius:12px;background:var(--card);}
+  table{border-collapse:collapse;width:100%;font-size:16.5px;}
+  caption{caption-side:top;text-align:left;font-family:"JetBrains Mono",monospace;font-size:11px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--accent);padding:14px 18px 0;font-weight:600;}
+  th,td{padding:11px 16px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top;}
+  thead th{background:var(--paper-2);font-family:"Fraunces",serif;font-weight:600;font-size:15px;
+    border-bottom:2px solid var(--rule);}
+  tbody tr:last-child td{border-bottom:none;}
+  td:first-child{font-weight:600;color:var(--ink);width:30%;}
+
+  /* figures */
+  figure{margin:34px 0;text-align:center;}
+  figure svg{max-width:100%;height:auto;background:var(--card);border:1px solid var(--rule);
+    border-radius:13px;box-shadow:0 14px 38px -26px var(--shadow);}
+  figcaption{font-size:15px;color:var(--ink-soft);font-style:italic;margin-top:12px;max-width:660px;
+    margin-left:auto;margin-right:auto;}
+  .figlab{font-family:"JetBrains Mono",monospace;font-style:normal;color:var(--accent);font-size:12px;
+    letter-spacing:.12em;text-transform:uppercase;margin-right:8px;}
+
+  ul,ol{margin:14px 0;padding-left:26px;}
+  li{margin:7px 0;}
+  code{font-family:"JetBrains Mono",monospace;font-size:.86em;background:var(--paper-2);
+    padding:2px 6px;border-radius:5px;}
+  hr.soft{border:none;border-top:1px solid var(--rule);margin:40px 0;}
+  .footnote{font-size:15px;color:var(--ink-soft);border-top:1px solid var(--rule);padding-top:10px;margin-top:30px;}
+  .footnote sup{color:var(--accent);}
+
+  .pillrow{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0;}
+  .pill{font-family:"JetBrains Mono",monospace;font-size:12.5px;background:var(--paper-2);
+    border:1px solid var(--rule);border-radius:30px;padding:6px 14px;}
+
+  /* SVG theming */
+  svg text{font-family:"Newsreader",serif;}
+  .sv-ink{fill:var(--ink);}
+  .sv-soft{fill:var(--ink-soft);}
+  .sv-acc{fill:var(--accent);}
+  .sv-teal{fill:var(--accent-2);}
+  .sv-gold{fill:var(--gold);}
+  .sv-green{fill:var(--green);}
+  .st-rule{stroke:var(--rule);}
+  .st-ink{stroke:var(--ink);}
+  .st-acc{stroke:var(--accent);}
+  .st-teal{stroke:var(--accent-2);}
+  .st-blue{stroke:var(--blue);}
+  .st-gold{stroke:var(--gold);}
+  .st-green{stroke:var(--green);}
+
+  @media (max-width:620px){
+    body{font-size:18px;}
+    .wrap{padding:0 16px 80px;}
+    h2.sec{flex-wrap:wrap;gap:10px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="kicker">PRMI Class Notes &nbsp;·&nbsp; Supervised Learning &amp; Instance-Based Methods</div>
+  <h1><span class="ch">The Complete Guide to</span>k-Nearest Neighbours</h1>
+  <div class="byline">the lazy, non-parametric classifier — distance metrics, the vote worked out by hand, how to choose k, Voronoi boundaries, weighted voting, regression, and the curse of dimensionality</div>
+  <div class="badge">Exam / Interview Edition · majority vote · k ≈ √N · Cover–Hart 2× bound</div>
+</header>
+
+<nav class="toc">
+  <h2>What this guide covers</h2>
+  <ol>
+    <li><a href="#intro">What k-NN is</a></li>
+    <li><a href="#algo">The algorithm, step by step</a></li>
+    <li><a href="#distance">Distance metrics</a></li>
+    <li><a href="#scaling">Why feature scaling is essential</a></li>
+    <li><a href="#example">A full worked example</a></li>
+    <li><a href="#choosek">Choosing k &amp; the bias–variance trade-off</a></li>
+    <li><a href="#boundary">The decision boundary &amp; Voronoi cells</a></li>
+    <li><a href="#weighted">Weighted k-NN &amp; the KDE link</a></li>
+    <li><a href="#regression">k-NN for regression</a></li>
+    <li><a href="#cost">Cost, speed &amp; the curse of dimensionality</a></li>
+    <li><a href="#prep">Cheat-sheet &amp; interview Q&amp;A</a></li>
+  </ol>
+</nav>
+
+<!-- ===================================================================== -->
+<section id="intro">
+  <h2 class="sec"><span class="num">0</span>What k-NN Is</h2>
+  <p class="lede">k-Nearest Neighbours is the most literal idea in machine learning: to label a new point, look at the training points closest to it and copy the majority. No equations are fit, no boundary is learned in advance — the data <em>is</em> the model.</p>
+
+  <p>Given a labelled training set, k-NN classifies a query \(x_q\) by finding its \(k\) nearest neighbours in feature space and taking a <strong>majority vote</strong> of their labels. For a numeric target it averages instead. "Tell me your neighbours, and I'll tell you who you are."</p>
+
+  <div class="box def">
+    <span class="lab">Three words that define k-NN</span>
+    <ul style="margin:6px 0 0;">
+      <li><strong>Supervised</strong> — it uses labelled examples, for either classification (vote) or regression (average).</li>
+      <li><strong>Non-parametric</strong> — it assumes no functional form for the boundary and has no fixed parameter count; model complexity grows with the data itself.</li>
+      <li><strong>Instance-based / "lazy"</strong> — there is no real training phase. It simply stores the training set and defers <em>all</em> computation to query time, in contrast to "eager" learners (SVM, trees, LDA) that fit a model up front.</li>
+    </ul>
+  </div>
+
+  <div class="box intuition">
+    <span class="lab">The one assumption</span>
+    <p>k-NN works whenever <em>nearby points tend to share labels</em> — the locality (smoothness) assumption. Everything else — which distance, which \(k\), how to scale features — is about making "nearby" mean the right thing.</p>
+  </div>
+</section>
+
+<!-- ===================================================================== -->
+<section id="algo">
+  <h2 class="sec"><span class="num">1</span>The Algorithm, Step by Step</h2>
+  <p class="lede">The whole method is three steps: measure distance to everything, keep the closest \(k\), and pool their answers. The only subtlety is what to do when the vote ties.</p>
+
+  <p>Given a training set \(D=\{(x_i,y_i)\}_{i=1}^{N}\), a distance \(d(\cdot,\cdot)\), a neighbour count \(k\), and a query \(x_q\):</p>
+
+  <div class="box def">
+    <span class="lab">k-NN in pseudocode</span>
+    <ol style="margin:6px 0 0;">
+      <li><strong>Distances.</strong> Compute \(d(x_q,x_i)\) for every training point \(i=1\dots N\).</li>
+      <li><strong>Select.</strong> Take the \(k\) points with the smallest distances — call them \(N_k(x_q)\).</li>
+      <li><strong>Aggregate.</strong>
+        <ul style="margin:4px 0 0;">
+          <li><em>Classification:</em> \(\hat y=\operatorname{mode}\{\,y_i : x_i\in N_k(x_q)\,\}\) — the majority class.</li>
+          <li><em>Regression:</em> \(\hat y=\dfrac1k\sum_{x_i\in N_k(x_q)} y_i\) — the mean target.</li>
+        </ul>
+      </li>
+    </ol>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 480 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flowchart of the k-NN algorithm">
+      <defs>
+        <marker id="arK" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--ink-soft)"/></marker>
+      </defs>
+      <!-- boxes -->
+      <rect x="90" y="24" width="300" height="46" rx="12" fill="#fbf8f1" class="st-teal" stroke-width="1.9"/>
+      <rect x="90" y="104" width="300" height="46" rx="12" fill="#fbf8f1" class="st-teal" stroke-width="1.9"/>
+      <rect x="90" y="184" width="300" height="46" rx="12" fill="#fbf8f1" class="st-teal" stroke-width="1.9"/>
+      <rect x="36" y="286" width="184" height="54" rx="12" fill="#fbf8f1" class="st-acc" stroke-width="1.9"/>
+      <rect x="260" y="286" width="184" height="54" rx="12" fill="#fbf8f1" class="st-teal" stroke-width="1.9"/>
+      <rect x="120" y="394" width="240" height="46" rx="12" fill="#fbf4e3" class="st-gold" stroke-width="2"/>
+      <!-- arrows -->
+      <g class="st-rule" stroke-width="1.6" fill="none">
+        <line x1="240" y1="70" x2="240" y2="102" marker-end="url(#arK)"/>
+        <line x1="240" y1="150" x2="240" y2="182" marker-end="url(#arK)"/>
+        <line x1="240" y1="230" x2="135" y2="284" marker-end="url(#arK)"/>
+        <line x1="240" y1="230" x2="345" y2="284" marker-end="url(#arK)"/>
+        <line x1="128" y1="340" x2="225" y2="392" marker-end="url(#arK)"/>
+        <line x1="352" y1="340" x2="255" y2="392" marker-end="url(#arK)"/>
+      </g>
+      <!-- text -->
+      <g class="sv-ink" text-anchor="middle" font-size="13">
+        <text x="240" y="52">Query x_q &nbsp;+&nbsp; stored training set</text>
+        <text x="240" y="132">Compute d(x_q, xᵢ) for all N points</text>
+        <text x="240" y="212">Keep the k points with smallest distance</text>
+        <text x="240" y="422" font-weight="600">Prediction ŷ</text>
+      </g>
+      <g text-anchor="middle" font-size="12.5">
+        <text x="128" y="308" class="sv-acc" font-weight="600">Classification</text>
+        <text x="128" y="326" class="sv-acc">majority vote</text>
+        <text x="352" y="308" class="sv-teal" font-weight="600">Regression</text>
+        <text x="352" y="326" class="sv-teal">average targets</text>
+      </g>
+    </svg>
+    <figcaption><span class="figlab">Fig 1</span>The k-NN pipeline. There is no model to train — every query recomputes distances to the whole dataset, keeps the nearest \(k\), and either votes (classification) or averages (regression).</figcaption>
+  </figure>
+
+  <div class="box pitfall">
+    <span class="lab">Breaking ties</span>
+    <p>A vote can tie (e.g. \(k=4\) splitting 2–2). Standard fixes: use an <strong>odd \(k\)</strong> for two classes; shrink \(k\) until the tie breaks; defer to the single nearest neighbour among the tied classes; or weight votes by distance (Section 7). "Training" here is \(O(1)\) — just storing the data — so all the real cost lands at prediction time (Section 9).</p>
+  </div>
+</section>
+<!-- ===================================================================== -->
+<section id="distance">
+  <h2 class="sec"><span class="num">2</span>Distance Metrics</h2>
+  <p class="lede">"Nearest" is only defined once you pick a distance. The metric is a genuine modelling choice — it reshapes every neighbourhood and can change the prediction.</p>
+
+  <div class="box def">
+    <span class="lab">The usual suspects</span>
+    <p><strong>Euclidean (\(L_2\))</strong> — straight-line distance, the default:</p>
+    $$ d(x,z)=\sqrt{\textstyle\sum_{j}(x_j-z_j)^2}. $$
+    <p><strong>Manhattan (\(L_1\))</strong> — city-block distance, gentler on large single-feature gaps:</p>
+    $$ d(x,z)=\textstyle\sum_{j}|x_j-z_j|. $$
+    <p><strong>Minkowski (\(L_p\))</strong> — the family that contains both:</p>
+    $$ d(x,z)=\Bigl(\textstyle\sum_{j}|x_j-z_j|^{p}\Bigr)^{1/p}, $$
+    <p>with \(p=1\) Manhattan, \(p=2\) Euclidean, and \(p\to\infty\) the <strong>Chebyshev (\(L_\infty\))</strong> distance \(\max_j|x_j-z_j|\). Other common metrics: <strong>Hamming</strong> (count of differing attributes, for categorical/binary data), <strong>cosine</strong> distance (angle-based, for high-dimensional sparse text), and <strong>Mahalanobis</strong> \(\sqrt{(x-z)^T\Sigma^{-1}(x-z)}\), which folds in feature scales and correlations.</p>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 340 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Unit balls for L1 (diamond), L2 (circle), and L-infinity (square)">
+      <!-- axes -->
+      <line x1="20" y1="170" x2="320" y2="170" class="st-rule" stroke-width="1.1"/>
+      <line x1="170" y1="20" x2="170" y2="320" class="st-rule" stroke-width="1.1"/>
+      <!-- L-inf square -->
+      <rect x="60" y="60" width="220" height="220" fill="none" class="st-gold" stroke-width="2"/>
+      <!-- L2 circle -->
+      <circle cx="170" cy="170" r="110" fill="none" class="st-acc" stroke-width="2"/>
+      <!-- L1 diamond -->
+      <polygon points="170,60 280,170 170,280 60,170" fill="none" class="st-teal" stroke-width="2"/>
+      <!-- shared axis-crossing points -->
+      <g class="sv-ink"><circle cx="280" cy="170" r="3"/><circle cx="60" cy="170" r="3"/><circle cx="170" cy="60" r="3"/><circle cx="170" cy="280" r="3"/></g>
+      <!-- labels -->
+      <text x="246" y="52" class="sv-gold" font-size="12" font-weight="600">L∞ (Chebyshev)</text>
+      <text x="232" y="150" class="sv-acc" font-size="12" font-weight="600">L₂ (Euclidean)</text>
+      <text x="22" y="150" class="sv-teal" font-size="12" font-weight="600">L₁ (Manhattan)</text>
+      <text x="286" y="186" class="sv-soft" font-size="11" font-style="italic">d = 1</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 2</span>The "unit balls" — all points at distance \(1\) from the centre under each metric. The metrics agree exactly on the axes (dots) but disagree off-axis: \(L_1\) is the inscribed diamond, \(L_2\) the circle, \(L_\infty\) the bounding square. Switching metric reshapes which points count as "near."</figcaption>
+  </figure>
+</section>
+
+<!-- ===================================================================== -->
+<section id="scaling">
+  <h2 class="sec"><span class="num">3</span>Why Feature Scaling Is Essential</h2>
+  <p class="lede">This is the mistake that quietly wrecks k-NN. Because distance sums over features, any feature with a large numeric range dominates the sum — and the others are effectively ignored. Scale first, always.</p>
+
+  <p>Two standard fixes put features on comparable footing: <strong>min–max normalisation</strong> \(x'=\dfrac{x-\min}{\max-\min}\in[0,1]\), or <strong>standardisation (z-score)</strong> \(x'=\dfrac{x-\mu}{\sigma}\) (mean \(0\), std \(1\)).</p>
+
+  <div class="box example">
+    <span class="lab">Worked example — scaling flips the nearest neighbour</span>
+    <p>Query \(Q=(\text{salary }50000,\ \text{age }30)\), and two candidates \(P=(52000,45)\), \(R=(60000,28)\). With raw values (salary in dollars):</p>
+    $$ d(Q,P)=\sqrt{2000^2+15^2}\approx 2000,\qquad d(Q,R)=\sqrt{10000^2+2^2}\approx 10000. $$
+    <p>So <strong>\(P\) looks nearest</strong> — but only because the salary term (\(\sim\)millions) drowns out age entirely. Standardise with \(\sigma_{\text{salary}}\approx15000,\ \sigma_{\text{age}}\approx12\):</p>
+    $$ d(Q,P)=\sqrt{0.13^2+1.25^2}\approx 1.26,\qquad d(Q,R)=\sqrt{0.67^2+0.17^2}\approx 0.69. $$
+    <p style="margin-bottom:0">Now <strong>\(R\) is nearest</strong> — the 15-year age gap to \(P\) finally counts. The neighbour, and possibly the prediction, flipped purely because of scaling.</p>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 460 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Each feature's share of squared distance, unscaled versus standardised">
+      <text x="135" y="24" text-anchor="middle" class="sv-soft" font-size="13" font-style="italic">unscaled</text>
+      <text x="345" y="24" text-anchor="middle" class="sv-soft" font-size="13" font-style="italic">standardised</text>
+      <!-- baselines -->
+      <line x1="50" y1="240" x2="230" y2="240" class="st-ink" stroke-width="1.2"/>
+      <line x1="250" y1="240" x2="430" y2="240" class="st-ink" stroke-width="1.2"/>
+      <text x="38" y="44" text-anchor="end" class="sv-soft" font-size="10">100%</text>
+      <line x1="44" y1="40" x2="50" y2="40" class="st-rule" stroke-width="1"/>
+      <!-- unscaled bars: salary ~100%, age ~0 -->
+      <rect x="72" y="40" width="50" height="200" class="sv-acc" opacity="0.8"/>
+      <rect x="152" y="238" width="50" height="2" class="sv-teal"/>
+      <!-- standardised bars: salary ~1%, age ~99% -->
+      <rect x="282" y="237.8" width="50" height="2.2" class="sv-acc"/>
+      <rect x="362" y="42" width="50" height="198" class="sv-teal" opacity="0.8"/>
+      <!-- labels -->
+      <g text-anchor="middle" font-size="11" class="sv-soft">
+        <text x="97" y="256">salary</text><text x="177" y="256">age</text>
+        <text x="307" y="256">salary</text><text x="387" y="256">age</text>
+      </g>
+      <text x="97" y="34" text-anchor="middle" class="sv-acc" font-size="10">≈100%</text>
+      <text x="387" y="36" text-anchor="middle" class="sv-teal" font-size="10">≈99%</text>
+      <text x="135" y="276" text-anchor="middle" class="sv-soft" font-size="10.5" font-style="italic">share of distance²</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 3</span>Each feature's contribution to the squared distance for the \(Q\)–\(P\) pair. Unscaled, salary is essentially the <em>entire</em> distance and age is invisible; after standardising, the contributions rebalance and age dominates instead. Same data, opposite conclusion.</figcaption>
+  </figure>
+
+  <div class="box pitfall">
+    <span class="lab">Related trap: irrelevant features</span>
+    <p>Every feature you include adds its gap into the distance — even useless ones. Irrelevant or noisy features dilute the signal from the good ones, so feature selection (or feature weighting) matters for k-NN, and the problem compounds in high dimensions (Section 9).</p>
+  </div>
+</section>
+<!-- ===================================================================== -->
+<section id="example">
+  <h2 class="sec"><span class="num">4</span>A Full Worked Example</h2>
+  <p class="lede">Six labelled points, one query, Euclidean distance. We'll compute every distance, sort them, and watch the prediction change as \(k\) grows — the single most instructive thing you can see in k-NN.</p>
+
+  <div class="tablewrap">
+    <table>
+      <caption>Training data (two features, two classes)</caption>
+      <thead><tr><th>Point</th><th>\(x_1\)</th><th>\(x_2\)</th><th>Class</th></tr></thead>
+      <tbody>
+        <tr><td>A</td><td>1</td><td>2</td><td>🔴 Red</td></tr>
+        <tr><td>B</td><td>2</td><td>1</td><td>🔴 Red</td></tr>
+        <tr><td>C</td><td>3</td><td>4</td><td>🔴 Red</td></tr>
+        <tr><td>D</td><td>6</td><td>5</td><td>🔵 Blue</td></tr>
+        <tr><td>E</td><td>7</td><td>7</td><td>🔵 Blue</td></tr>
+        <tr><td>F</td><td>5</td><td>6</td><td>🔵 Blue</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Classify the query \(q=(4,4)\). Compute \(d(q,\cdot)=\sqrt{(4-x_1)^2+(4-x_2)^2}\) to each point and sort:</p>
+
+  <div class="tablewrap">
+    <table>
+      <caption>Distances from \(q=(4,4)\), sorted nearest-first</caption>
+      <thead><tr><th>Rank</th><th>Point</th><th>Class</th><th>\((\Delta x_1)^2+(\Delta x_2)^2\)</th><th>Distance</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><strong>C</strong></td><td>🔴 Red</td><td>\(1+0\)</td><td><strong>1.00</strong></td></tr>
+        <tr><td>2</td><td>D</td><td>🔵 Blue</td><td>\(4+1\)</td><td>2.24</td></tr>
+        <tr><td>3</td><td>F</td><td>🔵 Blue</td><td>\(1+4\)</td><td>2.24</td></tr>
+        <tr><td>4</td><td>A</td><td>🔴 Red</td><td>\(9+4\)</td><td>3.61</td></tr>
+        <tr><td>5</td><td>B</td><td>🔴 Red</td><td>\(4+9\)</td><td>3.61</td></tr>
+        <tr><td>6</td><td>E</td><td>🔵 Blue</td><td>\(9+9\)</td><td>4.24</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="box derive">
+    <span class="lab">The vote, for three values of \(k\)</span>
+    <ul style="margin:6px 0 0;">
+      <li>\(k=1\): nearest is \(C\) → <strong>Red</strong>.</li>
+      <li>\(k=3\): \(\{C,D,F\}=\{\text{Red},\text{Blue},\text{Blue}\}\) → <strong>Blue</strong> (2 vs 1).</li>
+      <li>\(k=5\): \(\{C,D,F,A,B\}=\{\text{Red},\text{Blue},\text{Blue},\text{Red},\text{Red}\}\) → <strong>Red</strong> (3 vs 2).</li>
+    </ul>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 400 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Query point with k=1 and k=3 neighbourhood circles over the six training points">
+      <!-- neighbourhood circles -->
+      <circle cx="200" cy="190" r="89" fill="var(--accent-2)" fill-opacity="0.05" class="st-teal" stroke-width="1.6" stroke-dasharray="5 4"/>
+      <circle cx="200" cy="190" r="40" fill="var(--accent)" fill-opacity="0.06" class="st-acc" stroke-width="1.6" stroke-dasharray="5 4"/>
+      <!-- Red points -->
+      <g fill="none" class="st-acc" stroke-width="1.9">
+        <circle cx="80" cy="270" r="6"/><circle cx="120" cy="310" r="6"/><circle cx="160" cy="190" r="6"/>
+      </g>
+      <!-- Blue points -->
+      <g class="st-teal" stroke-width="2.1">
+        <g transform="translate(280,150)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+        <g transform="translate(320,70)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+        <g transform="translate(240,110)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+      </g>
+      <!-- query -->
+      <polygon points="200,179 211,190 200,201 189,190" fill="var(--gold)" class="st-gold" stroke-width="1.5"/>
+      <!-- labels -->
+      <g class="sv-soft" font-size="12">
+        <text x="66" y="266" text-anchor="end">A</text><text x="106" y="320" text-anchor="end">B</text><text x="150" y="180" text-anchor="end">C</text>
+        <text x="292" y="146">D</text><text x="332" y="66">E</text><text x="252" y="104">F</text>
+      </g>
+      <text x="200" y="222" text-anchor="middle" class="sv-ink" font-size="12" font-style="italic" font-weight="600">q</text>
+      <text x="200" y="150" text-anchor="middle" class="sv-acc" font-size="10.5" font-style="italic">k=1</text>
+      <text x="200" y="106" text-anchor="middle" class="sv-teal" font-size="10.5" font-style="italic">k=3</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 4</span>The query \(q\) (gold) with its \(k=1\) ring (reaching only the lone Red \(C\)) and \(k=3\) ring (capturing the two Blue points \(D,F\) as well). The far Red cluster \(A,B\) only enters the vote at \(k=5\).</figcaption>
+  </figure>
+
+  <div class="box intuition">
+    <span class="lab">Why this query is so revealing</span>
+    <p>\(q\) sits near the boundary: a single Red point is closest, but a Blue cluster surrounds it at the next ring. So \(k=1\) trusts one possibly-noisy point, \(k=3\) reflects the local Blue neighbourhood, and \(k=5\) pulls in the distant Red cluster. The flip-flop isn't a bug — it's precisely why \(k\) must be chosen with care (Section 5).</p>
+  </div>
+</section>
+<!-- ===================================================================== -->
+<section id="choosek">
+  <h2 class="sec"><span class="num">5</span>Choosing k &amp; the Bias–Variance Trade-off</h2>
+  <p class="lede">\(k\) is the one knob that matters most. It slides k-NN between memorising every point and ignoring the query entirely — the bias–variance trade-off in its purest form.</p>
+
+  <div class="box def">
+    <span class="lab">Small k vs large k</span>
+    <ul style="margin:6px 0 0;">
+      <li><strong>Small \(k\) (e.g. \(k=1\)):</strong> highly flexible, follows every point — <em>low bias, high variance</em>. Sensitive to noise and outliers, jagged boundary, prone to overfitting. (1-NN always has zero <em>training</em> error — it is its own nearest neighbour.)</li>
+      <li><strong>Large \(k\):</strong> averages over a big neighbourhood — <em>high bias, low variance</em>. Smoother boundary but blurs local structure. At the extreme \(k=N\), every query gets the global majority class, ignoring \(x\) completely.</li>
+    </ul>
+    <p style="margin-bottom:0">Increasing \(k\) = more smoothing. A useful mental model (ESL): the effective number of parameters is about \(N/k\).</p>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 620 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Jagged decision boundary for small k versus smooth boundary for large k">
+      <text x="170" y="24" text-anchor="middle" class="sv-soft" font-size="13" font-style="italic">k = 1 — jagged, high variance</text>
+      <text x="460" y="24" text-anchor="middle" class="sv-soft" font-size="13" font-style="italic">large k — smooth, higher bias</text>
+      <!-- LEFT panel frame -->
+      <rect x="40" y="40" width="260" height="240" fill="none" class="st-rule" stroke-width="1"/>
+      <!-- jagged boundary -->
+      <polyline points="172,40 160,80 134,140 168,168 146,196 200,156 182,232 168,280" fill="none" class="st-gold" stroke-width="2.2"/>
+      <!-- reds left -->
+      <g fill="none" class="st-acc" stroke-width="1.8"><circle cx="70" cy="90" r="5.5"/><circle cx="95" cy="150" r="5.5"/><circle cx="75" cy="210" r="5.5"/><circle cx="110" cy="250" r="5.5"/><circle cx="125" cy="115" r="5.5"/></g>
+      <!-- blues right -->
+      <g class="st-teal" stroke-width="2">
+        <g transform="translate(250,90)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+        <g transform="translate(270,160)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+        <g transform="translate(245,225)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+        <g transform="translate(225,115)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+      </g>
+      <!-- noise points -->
+      <g class="st-teal" stroke-width="2"><g transform="translate(150,170)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g></g>
+      <g fill="none" class="st-acc" stroke-width="1.8"><circle cx="205" cy="135" r="5.5"/></g>
+      <!-- RIGHT panel frame -->
+      <rect x="330" y="40" width="260" height="240" fill="none" class="st-rule" stroke-width="1"/>
+      <!-- smooth boundary -->
+      <path d="M462,40 C448,110 470,190 460,280" fill="none" class="st-gold" stroke-width="2.4"/>
+      <g fill="none" class="st-acc" stroke-width="1.8"><circle cx="360" cy="90" r="5.5"/><circle cx="385" cy="150" r="5.5"/><circle cx="365" cy="210" r="5.5"/><circle cx="400" cy="250" r="5.5"/><circle cx="415" cy="115" r="5.5"/></g>
+      <g class="st-teal" stroke-width="2">
+        <g transform="translate(540,90)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+        <g transform="translate(560,160)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+        <g transform="translate(535,225)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+        <g transform="translate(515,115)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+      </g>
+      <g class="st-teal" stroke-width="2"><g transform="translate(430,170)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g></g>
+      <g fill="none" class="st-acc" stroke-width="1.8"><circle cx="490" cy="135" r="5.5"/></g>
+    </svg>
+    <figcaption><span class="figlab">Fig 5</span>Same data, two values of \(k\). At \(k=1\) the boundary contorts to capture every noisy point (the stray cross among the circles, and vice-versa) — low bias, high variance. A large \(k\) smooths it into a clean separating curve that tolerates a couple of misclassified outliers — higher bias, lower variance.</figcaption>
+  </figure>
+
+  <div class="box def">
+    <span class="lab">How to pick \(k\) in practice</span>
+    <ul style="margin:6px 0 0;">
+      <li><strong>Cross-validation</strong> is the principled answer: sweep a range of \(k\), pick the one with lowest validation error. The error-vs-\(k\) curve is typically U-shaped — too small overfits, too large underfits.</li>
+      <li><strong>Rule of thumb:</strong> start near \(k\approx\sqrt{N}\).</li>
+      <li><strong>Use an odd \(k\)</strong> for two-class problems to avoid tie votes.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===================================================================== -->
+<section id="boundary">
+  <h2 class="sec"><span class="num">6</span>The Decision Boundary &amp; Voronoi Cells</h2>
+  <p class="lede">k-NN never writes down a boundary, yet one exists implicitly. For \(1\)-NN it's a beautiful object: the Voronoi tessellation of the training points.</p>
+
+  <p>Under \(1\)-NN, every training point <strong>owns</strong> the region of space that is closer to it than to any other point — its <span class="term">Voronoi cell</span>. The cell walls are perpendicular bisectors between neighbouring points. The decision boundary is just the union of those walls that separate <em>differently-labelled</em> points, so it is always <strong>piecewise-linear</strong>.</p>
+
+  <figure>
+    <svg viewBox="0 0 420 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A 1-NN Voronoi tessellation with class regions and a piecewise-linear boundary">
+      <!-- region shading -->
+      <polygon points="0,0 205,0 215,120 195,200 225,280 210,340 0,340" fill="var(--accent)" fill-opacity="0.06"/>
+      <polygon points="205,0 420,0 420,340 210,340 225,280 195,200 215,120" fill="var(--accent-2)" fill-opacity="0.06"/>
+      <!-- faint internal cell edges -->
+      <g class="st-rule" stroke-width="1" stroke-dasharray="4 4" fill="none">
+        <line x1="0" y1="158" x2="198" y2="162"/>
+        <line x1="70" y1="262" x2="208" y2="258"/>
+        <line x1="222" y1="160" x2="420" y2="150"/>
+        <line x1="220" y1="250" x2="420" y2="262"/>
+      </g>
+      <!-- decision boundary (bold) -->
+      <polyline points="205,0 215,120 195,200 225,280 210,340" fill="none" class="st-ink" stroke-width="2.6"/>
+      <!-- red seeds -->
+      <g fill="none" class="st-acc" stroke-width="1.9"><circle cx="90" cy="100" r="6"/><circle cx="110" cy="220" r="6"/><circle cx="150" cy="300" r="6"/></g>
+      <!-- blue seeds -->
+      <g class="st-teal" stroke-width="2.1">
+        <g transform="translate(320,100)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+        <g transform="translate(300,230)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+        <g transform="translate(230,300)"><line x1="-5" y1="-5" x2="5" y2="5"/><line x1="-5" y1="5" x2="5" y2="-5"/></g>
+      </g>
+      <text x="70" y="40" class="sv-acc" font-size="12" font-style="italic">class Red</text>
+      <text x="348" y="40" text-anchor="end" class="sv-teal" font-size="12" font-style="italic">class Blue</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 6</span>The \(1\)-NN partition. Dashed lines are cell walls between same-class points; the bold line — the walls between opposite classes — is the decision boundary. It is piecewise-linear and entirely data-defined. Larger \(k\) yields a smoother, simpler version of the same idea.</figcaption>
+  </figure>
+</section>
+<!-- ===================================================================== -->
+<section id="weighted">
+  <h2 class="sec"><span class="num">7</span>Weighted k-NN &amp; the KDE Link</h2>
+  <p class="lede">Plain k-NN gives every neighbour an equal vote — but a point right next to the query surely deserves more say than one at the edge of the neighbourhood. Distance-weighting fixes that, and reveals k-NN's kinship with kernel density estimation.</p>
+
+  <p>Weight each neighbour by a decreasing function of its distance — \(w_i=\tfrac{1}{d}\), \(\tfrac{1}{d^2}\), or a Gaussian \(w_i=e^{-d^2/2\sigma^2}\) — then vote or average with those weights:</p>
+  $$ \text{classify: } \hat y=\arg\max_c\!\!\sum_{i\in N_k,\,y_i=c}\!\!w_i, \qquad \text{regress: } \hat y=\frac{\sum_{i\in N_k} w_i\,y_i}{\sum_{i\in N_k} w_i}. $$
+
+  <figure>
+    <svg viewBox="0 0 380 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Neighbour weight as a decreasing function of distance">
+      <!-- axes -->
+      <line x1="50" y1="220" x2="360" y2="220" class="st-ink" stroke-width="1.3"/>
+      <line x1="50" y1="230" x2="50" y2="30" class="st-ink" stroke-width="1.3"/>
+      <text x="356" y="240" text-anchor="end" class="sv-soft" font-size="11" font-style="italic">distance d</text>
+      <text x="50" y="24" text-anchor="middle" class="sv-soft" font-size="11" font-style="italic">weight w</text>
+      <!-- uniform -->
+      <line x1="50" y1="40" x2="350" y2="40" class="st-rule" stroke-width="1.6" stroke-dasharray="6 4"/>
+      <text x="346" y="34" text-anchor="end" class="sv-soft" font-size="10.5" font-style="italic">uniform (all equal)</text>
+      <!-- inverse 1/(1+d^2) -->
+      <polyline points="50,40 80,76 110,130 140,165 170,184 200,195 230,202 350,213" fill="none" class="st-teal" stroke-width="2.2"/>
+      <text x="150" y="150" class="sv-teal" font-size="11" font-style="italic">1/d²</text>
+      <!-- gaussian -->
+      <polyline points="50,40 80,59 110,111 140,162 170,196 200,212 230,218 350,220" fill="none" class="st-acc" stroke-width="2.2"/>
+      <text x="118" y="92" class="sv-acc" font-size="11" font-style="italic">e^(−d²/2σ²)</text>
+    </svg>
+    <figcaption><span class="figlab">Fig 7</span>Weighting schemes. Uniform k-NN (dashed) gives every neighbour weight \(1\); the inverse-square and Gaussian schemes give nearby points far more influence and distant ones almost none — which softens ties and makes an over-large \(k\) much less harmful.</figcaption>
+  </figure>
+
+  <div class="box intuition">
+    <span class="lab">Two faces of the same coin — k-NN and KDE</span>
+    <p>This connects directly to the kernel density estimation in your notes. Both estimate the local density of points; they just hold different things fixed. <strong>KDE / Parzen windows</strong> fix the window width \(h\) and <em>count</em> how many points fall inside. <strong>k-NN</strong> fixes the count \(k\) and <em>grows</em> the window until it contains them. Fix the volume, or fix the count — Bishop presents them side by side as the two natural non-parametric density estimators, and weighted k-NN with a kernel sits squarely between them.</p>
+  </div>
+</section>
+
+<!-- ===================================================================== -->
+<section id="regression">
+  <h2 class="sec"><span class="num">8</span>k-NN for Regression</h2>
+  <p class="lede">Swap the vote for an average and k-NN predicts numbers instead of classes. Everything else — distances, scaling, choosing \(k\) — carries over unchanged.</p>
+
+  <p>For a numeric target, predict the mean of the \(k\) neighbours' values, \(\hat y=\tfrac1k\sum_{i\in N_k}y_i\), or the distance-weighted mean from Section 7. Uniform averaging gives a <strong>piecewise-constant</strong> surface (the prediction only jumps when the neighbour set changes); weighting smooths it.</p>
+
+  <div class="box example">
+    <span class="lab">Worked example — uniform vs weighted average</span>
+    <p>A query's three nearest neighbours have target values \(\{10,12,20\}\) at distances \(\{1,2,4\}\). Uniform \(k=3\) prediction:</p>
+    $$ \hat y=\tfrac13(10+12+20)=14.0. $$
+    <p>Distance-weighted with \(w_i=1/d_i\) (so \(w=1,\,0.5,\,0.25\), summing to \(1.75\)):</p>
+    $$ \hat y=\frac{1(10)+0.5(12)+0.25(20)}{1.75}=\frac{21}{1.75}=12.0. $$
+    <p style="margin-bottom:0">Weighting pulls the estimate toward the two close neighbours (\(10,12\)) and discounts the distant outlier (\(20\)): \(12.0\) rather than \(14.0\).</p>
+  </div>
+</section>
+<!-- ===================================================================== -->
+<section id="cost">
+  <h2 class="sec"><span class="num">9</span>Cost, Speed &amp; the Curse of Dimensionality</h2>
+  <p class="lede">Laziness has a price. k-NN trains instantly but pays at every query, must store all the data, and — most importantly — degrades badly as the number of features grows.</p>
+
+  <div class="box def">
+    <span class="lab">Where the cost lives</span>
+    <ul style="margin:6px 0 0;">
+      <li><strong>Training:</strong> \(O(1)\) — just store the data. (Memory: \(O(Nd)\), the whole dataset.)</li>
+      <li><strong>Prediction (brute force):</strong> \(O(Nd)\) to compute all distances, plus \(O(N)\) to find the \(k\) smallest — <em>per query</em>. That doesn't scale.</li>
+      <li><strong>Speed-ups:</strong> space-partitioning trees (<em>k-d trees</em>, <em>ball trees</em>) give \(\sim O(\log N)\) queries in low dimensions; <em>approximate NN</em> (LSH, HNSW graphs) goes sub-linear at scale; and <em>prototype reduction</em> (condensed/edited NN) shrinks the stored set.</li>
+    </ul>
+  </div>
+
+  <p>The deeper problem is dimensionality. In high \(D\), volume grows so fast that to capture even a small fraction of the data in a neighbourhood you must span almost the entire range of <em>every</em> feature — so "nearby" points aren't actually near.</p>
+
+  <figure>
+    <svg viewBox="0 0 420 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Edge length needed to capture a fraction of the data volume, versus dimension">
+      <!-- axes -->
+      <line x1="60" y1="250" x2="410" y2="250" class="st-ink" stroke-width="1.3"/>
+      <line x1="60" y1="260" x2="60" y2="30" class="st-ink" stroke-width="1.3"/>
+      <text x="235" y="288" text-anchor="middle" class="sv-soft" font-size="11.5" font-style="italic">dimension D</text>
+      <text x="60" y="22" text-anchor="middle" class="sv-soft" font-size="11.5" font-style="italic">edge length per axis</text>
+      <!-- y ticks -->
+      <text x="54" y="44" text-anchor="end" class="sv-soft" font-size="10">1.0</text>
+      <text x="54" y="149" text-anchor="end" class="sv-soft" font-size="10">0.5</text>
+      <text x="54" y="254" text-anchor="end" class="sv-soft" font-size="10">0</text>
+      <line x1="56" y1="40" x2="60" y2="40" class="st-rule" stroke-width="1"/>
+      <line x1="56" y1="145" x2="60" y2="145" class="st-rule" stroke-width="1"/>
+      <!-- x ticks -->
+      <text x="60" y="266" text-anchor="middle" class="sv-soft" font-size="10">1</text>
+      <text x="165" y="266" text-anchor="middle" class="sv-soft" font-size="10">10</text>
+      <text x="283" y="266" text-anchor="middle" class="sv-soft" font-size="10">20</text>
+      <text x="400" y="266" text-anchor="middle" class="sv-soft" font-size="10">30</text>
+      <!-- capture 10% curve -->
+      <polyline points="60,229 72,184 83,153 95,132 107,118 119,107 142,93 166,83 224,70 283,63 341,59 400,56" fill="none" class="st-acc" stroke-width="2.3"/>
+      <text x="250" y="52" class="sv-acc" font-size="11" font-style="italic">capture 10%</text>
+      <!-- capture 1% curve -->
+      <polyline points="60,248 72,229 83,205 107,166 166,118 283,63 400,71" fill="none" class="st-teal" stroke-width="2.3"/>
+      <text x="120" y="222" class="sv-teal" font-size="11" font-style="italic">capture 1%</text>
+      <!-- annotation at D=10 -->
+      <circle cx="166" cy="83" r="3.2" class="sv-acc"/>
+      <line x1="166" y1="83" x2="166" y2="250" class="st-rule" stroke-width="1" stroke-dasharray="3 3"/>
+    </svg>
+    <figcaption><span class="figlab">Fig 8</span>The volume trap (after Hastie et al.). To capture a fraction \(r\) of uniformly-spread data in \(D\) dimensions, a neighbourhood must have edge length \(r^{1/D}\) along each axis. By \(D=10\), grabbing just \(10\%\) of the data already needs \(\approx 80\%\) of every feature's range — the neighbourhood is no longer local, and "nearest neighbour" loses its meaning.</figcaption>
+  </figure>
+
+  <div class="box pitfall">
+    <span class="lab">Distance concentration</span>
+    <p>The same effect shows up as concentration: in high dimensions the nearest and farthest points sit at almost the same distance (\(d_{\max}/d_{\min}\to 1\)), so neighbour rankings get swamped by noise. The remedy is to reduce dimensionality first — <strong>PCA or LDA</strong> (see the companion guide) — or to select/weight features and learn a better metric.</p>
+  </div>
+</section>
+<!-- ===================================================================== -->
+<section id="prep">
+  <h2 class="sec"><span class="num">10</span>Cheat-Sheet &amp; Interview Q&amp;A</h2>
+  <p class="lede">The whole method on one screen — the facts, the comparisons examiners reach for, and the questions you'll actually be asked.</p>
+
+  <h3>The fact wall</h3>
+  <div class="pillrow">
+    <span class="pill">Predict: vote (class) / mean (regression) of \(k\) nearest</span>
+    <span class="pill">Euclidean: \(\sqrt{\sum_j(x_j-z_j)^2}\)</span>
+    <span class="pill">Minkowski \(L_p\): \(p=1,2,\infty\)</span>
+    <span class="pill">Weighted: \(\hat y=\dfrac{\sum w_i y_i}{\sum w_i}\)</span>
+    <span class="pill">Start at \(k\approx\sqrt{N}\), use odd \(k\)</span>
+    <span class="pill">Effective params \(\approx N/k\)</span>
+    <span class="pill">Cover–Hart: 1-NN error \(\le 2\times\) Bayes</span>
+    <span class="pill">Always scale features</span>
+    <span class="pill">Brute-force query: \(O(Nd)\)</span>
+  </div>
+
+  <h3>Comparisons that show up on exams</h3>
+  <div class="tablewrap">
+    <table>
+      <caption>Lazy (k-NN) vs. eager learners</caption>
+      <thead><tr><th></th><th>k-NN (lazy)</th><th>SVM / Tree / LDA (eager)</th></tr></thead>
+      <tbody>
+        <tr><td>Training</td><td>none — store the data</td><td>fit a model up front</td></tr>
+        <tr><td>Prediction</td><td>slow (\(O(Nd)\)/query)</td><td>fast</td></tr>
+        <tr><td>Stores</td><td>all training data</td><td>a compact model</td></tr>
+        <tr><td>Form</td><td>non-parametric</td><td>mostly parametric</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tablewrap">
+    <table>
+      <caption>Small k vs. large k</caption>
+      <thead><tr><th></th><th>small \(k\) (e.g. 1)</th><th>large \(k\)</th></tr></thead>
+      <tbody>
+        <tr><td>Bias</td><td>low</td><td>high</td></tr>
+        <tr><td>Variance</td><td>high</td><td>low</td></tr>
+        <tr><td>Boundary</td><td>jagged</td><td>smooth</td></tr>
+        <tr><td>Failure mode</td><td>overfits noise</td><td>\(k{=}N\Rightarrow\) global majority</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Interview questions</h3>
+
+  <div class="box interview">
+    <span class="lab">Why is k-NN called "lazy" and "non-parametric"?</span>
+    <p>Lazy: it does no work at training time beyond storing the data — all computation is deferred to the query. Non-parametric: it assumes no functional form for the boundary and has no fixed parameter count; the model is the data, and its complexity grows with \(N\).</p>
+  </div>
+  <div class="box interview">
+    <span class="lab">How does \(k\) trade off bias and variance?</span>
+    <p>Small \(k\) is flexible — low bias, high variance, jagged boundary, sensitive to noise. Large \(k\) averages more — high bias, low variance, smoother boundary. At \(k=N\) every query returns the global majority class.</p>
+  </div>
+  <div class="box interview">
+    <span class="lab">How do you choose \(k\)?</span>
+    <p>By cross-validation: sweep \(k\) and take the lowest validation error (the curve is usually U-shaped). A common starting heuristic is \(k\approx\sqrt N\); use an odd \(k\) for two-class problems to avoid ties.</p>
+  </div>
+  <div class="box interview">
+    <span class="lab">Why must you scale the features?</span>
+    <p>Distance sums over features, so a large-range feature dominates and the rest are ignored. Min–max normalisation or z-score standardisation puts every feature on comparable footing — without it the nearest neighbour can be decided by a single feature's units.</p>
+  </div>
+  <div class="box interview">
+    <span class="lab">Which distance metric, and when?</span>
+    <p>Euclidean (\(L_2\)) by default; Manhattan (\(L_1\)) when you want robustness to large single-feature gaps or grid-like data; Minkowski to interpolate; Hamming for categorical/binary; cosine for high-dimensional sparse text; Mahalanobis when features are correlated or on different scales.</p>
+  </div>
+  <div class="box interview">
+    <span class="lab">What is the curse of dimensionality for k-NN?</span>
+    <p>In high dimensions, points spread out and distances concentrate (\(d_{\max}/d_{\min}\to1\)), so neighbourhoods stop being local and "nearest" becomes meaningless. You'd need exponentially more data. Mitigate with dimensionality reduction (PCA/LDA), feature selection, or a learned metric.</p>
+  </div>
+  <div class="box interview">
+    <span class="lab">How do you make k-NN fast at query time?</span>
+    <p>Brute force is \(O(Nd)\) per query. Use space-partitioning trees (k-d, ball trees) for low dimensions, approximate nearest-neighbour methods (LSH, HNSW) at scale, and prototype-reduction (condensed/edited NN) to shrink the stored set.</p>
+  </div>
+  <div class="box interview">
+    <span class="lab">What shape is the k-NN decision boundary?</span>
+    <p>Piecewise-linear and entirely data-defined. For \(1\)-NN it's exactly the boundary of the Voronoi tessellation of the training points; larger \(k\) yields a smoother, simpler version. Because it's non-parametric, the boundary can be arbitrarily complex.</p>
+  </div>
+  <div class="box interview">
+    <span class="lab">Is there any theoretical guarantee?</span>
+    <p>Yes — the Cover–Hart result: as \(N\to\infty\), the error rate of \(1\)-NN is at most twice the optimal Bayes error rate. Remarkably good for so simple a rule.</p>
+  </div>
+
+  <div class="box pitfall">
+    <span class="lab">Last-minute gotchas</span>
+    <ul>
+      <li><strong>Scale your features</strong> — the number-one k-NN mistake.</li>
+      <li>Choose \(k\) by cross-validation, not by guessing; use odd \(k\) to avoid ties.</li>
+      <li>High dimensions break k-NN — reduce dimensionality first.</li>
+      <li><strong>Class imbalance</strong> biases the vote toward the majority class (it floods every neighbourhood) — use distance weighting or rebalance.</li>
+      <li>Irrelevant features add noise to every distance — select or weight features.</li>
+      <li>It stores the whole dataset — memory- and latency-heavy at prediction time.</li>
+    </ul>
+  </div>
+
+  <div class="box def">
+    <span class="lab">Where to next — companion guides</span>
+    <p>This joins your SVM, decision-tree, and LDA guides. The natural next stops from your PRMI notes:</p>
+    <ul>
+      <li><strong>Naïve Bayes &amp; KDE</strong> — k-NN's density-estimation cousin (fix count vs fix volume), the Play-Tennis posterior, and kernel density estimation.</li>
+      <li><strong>Clustering</strong> — \(K\)-means with a worked iteration, hierarchical clustering, and the silhouette score (note: \(K\)-means' \(K\) is unrelated to k-NN's \(k\)).</li>
+      <li><strong>Evaluation metrics</strong> — confusion matrix, precision / recall / \(F_\beta\), and the class-imbalance toolkit (sampling, SMOTE).</li>
+      <li><strong>Neural networks</strong> — the forward pass and the full backpropagation derivation from your notes.</li>
+    </ul>
+    <p style="margin-bottom:0">Say the word and I'll build any of them next.</p>
+  </div>
+
+  <hr class="soft"/>
+  <p class="footnote">A companion to your SVM, decision-tree, and LDA guides, covering k-Nearest Neighbours end to end — the algorithm flow, distance metrics, the scaling trap, a vote worked by hand, choosing \(k\), Voronoi boundaries, weighting, regression, and the curse of dimensionality. Every step is checkable. Good luck. 📍</p>
+</section>
+</div>
+</body>
+</html>
