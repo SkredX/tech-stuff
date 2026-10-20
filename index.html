@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tech Stuff — Interactive Mind Map</title>
+  <title>Tech Stuff — Semantic Knowledge Graph</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     * {
@@ -24,14 +24,13 @@
       top: 20px;
       left: 20px;
       z-index: 10;
-      background: rgba(22, 27, 34, 0.85);
-      backdrop-filter: blur(8px);
-      padding: 16px 20px;
+      background: rgba(22, 27, 34, 0.88);
+      backdrop-filter: blur(10px);
+      padding: 18px 20px;
       border-radius: 12px;
       border: 1px solid #30363d;
-      max-width: 340px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-      pointer-events: auto;
+      max-width: 350px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
     }
     h1 {
       font-size: 1.15rem;
@@ -40,10 +39,10 @@
       margin-bottom: 6px;
     }
     p.subtitle {
-      font-size: 0.85rem;
+      font-size: 0.83rem;
       color: #8b949e;
       margin-bottom: 12px;
-      line-height: 1.4;
+      line-height: 1.45;
     }
     #search {
       width: 100%;
@@ -60,15 +59,16 @@
       border-color: #58a6ff;
     }
     #status {
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       color: #58a6ff;
       margin-top: 10px;
     }
     .legend {
       margin-top: 12px;
       display: flex;
-      gap: 14px;
-      font-size: 0.78rem;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.76rem;
       color: #8b949e;
       border-top: 1px solid #21262d;
       padding-top: 10px;
@@ -84,6 +84,40 @@
       border-radius: 50%;
       display: inline-block;
     }
+    #tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(22, 27, 34, 0.96);
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #c9d1d9;
+      font-size: 0.8rem;
+      max-width: 280px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 20;
+    }
+    #tooltip .tt-title {
+      font-weight: 600;
+      color: #f0f6fc;
+      margin-bottom: 4px;
+      font-size: 0.88rem;
+    }
+    #tooltip .tt-sub {
+      color: #8b949e;
+      font-size: 0.74rem;
+      margin-bottom: 6px;
+    }
+    #tooltip ul {
+      padding-left: 16px;
+      color: #58a6ff;
+      margin-top: 4px;
+    }
+    #tooltip li {
+      margin-bottom: 2px;
+    }
     svg {
       width: 100vw;
       height: 100vh;
@@ -94,7 +128,7 @@
     }
     .link {
       stroke: #30363d;
-      stroke-opacity: 0.7;
+      stroke-opacity: 0.75;
     }
     .node {
       cursor: pointer;
@@ -103,14 +137,13 @@
       transition: r 0.2s ease, filter 0.2s ease;
     }
     .node:hover circle {
-      filter: drop-shadow(0 0 8px rgba(88, 166, 255, 0.8));
+      filter: drop-shadow(0 0 8px rgba(88, 166, 255, 0.85));
     }
     .node text {
       font-size: 12px;
       fill: #c9d1d9;
       pointer-events: none;
       text-shadow: 0 2px 4px #0d1117, 0 -2px 4px #0d1117, 2px 0 4px #0d1117, -2px 0 4px #0d1117;
-      transition: fill 0.2s, font-weight 0.2s;
     }
     .node:hover text {
       fill: #ffffff;
@@ -121,24 +154,24 @@
 <body>
 
   <div id="ui-overlay">
-    <h1>Knowledge Graph</h1>
-    <p class="subtitle">Drag nodes to rearrange, scroll to zoom, and click any file node to read the article.</p>
-    <input type="text" id="search" placeholder="Filter nodes by name...">
-    <div id="status">Syncing repository tree...</div>
+    <h1>Semantic Knowledge Map</h1>
+    <p class="subtitle">Nodes are named and grouped automatically using document headers, `<title>` tags, and series patterns.</p>
+    <input type="text" id="search" placeholder="Search concepts or headings...">
+    <div id="status">Discovering repository files...</div>
     <div class="legend">
-      <div class="legend-item"><span class="dot" style="background:#f0883e;"></span> Folder / Hub</div>
-      <div class="legend-item"><span class="dot" style="background:#58a6ff;"></span> HTML Document</div>
+      <div class="legend-item"><span class="dot" style="background:#f0883e;"></span> Root / Folder</div>
+      <div class="legend-item"><span class="dot" style="background:#a371f7;"></span> Series / Topic Hub</div>
+      <div class="legend-item"><span class="dot" style="background:#58a6ff;"></span> Document</div>
     </div>
   </div>
 
+  <div id="tooltip"></div>
   <svg id="mindmap"></svg>
 
   <script>
-    // Configuration: Auto-detects user/repo on GitHub Pages, with fallback to your repo
     const DEFAULT_OWNER = 'skredx';
     const DEFAULT_REPO = 'tech-stuff';
 
-    // Fallback file list in case of offline local testing or API rate limit
     const FALLBACK_FILES = [
       "KNN_(superv).html",
       "LLMs from zero, Part 1_ Foundations and the Transformer.html",
@@ -146,6 +179,15 @@
       "LLMs from zero, Part 3_ Training, alignment and reasoning.html",
       "camera_calib_notes.html"
     ];
+
+    // Lightweight abbreviation & shorthand dictionary for fallback cleanup
+    const SHORTHAND_MAP = {
+      'knn': 'k-Nearest Neighbours (KNN)',
+      'superv': 'Supervised Learning',
+      'calib': 'Calibration',
+      'llm': 'Large Language Models',
+      'llms': 'Large Language Models'
+    };
 
     function getRepoDetails() {
       const host = window.location.hostname;
@@ -158,99 +200,203 @@
       return { owner: DEFAULT_OWNER, repo: DEFAULT_REPO };
     }
 
-    async function fetchHtmlFiles() {
-      const statusEl = document.getElementById('status');
+    async function fetchHtmlFileList() {
       const { owner, repo } = getRepoDetails();
-
       try {
-        // 1. Fetch repository metadata to identify the default branch
         const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
-        if (!repoRes.ok) throw new Error('API Rate limit or private repo');
+        if (!repoRes.ok) throw new Error('GitHub API unavailable');
         const repoData = await repoRes.json();
         const branch = repoData.default_branch || 'main';
 
-        // 2. Fetch the full recursive git tree
         const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
-        if (!treeRes.ok) throw new Error('Could not fetch git tree');
+        if (!treeRes.ok) throw new Error('Tree fetch failed');
         const treeData = await treeRes.json();
 
-        const htmlFiles = treeData.tree
+        const files = treeData.tree
           .filter(item => item.type === 'blob' && item.path.endsWith('.html') && item.path.toLowerCase() !== 'index.html')
           .map(item => item.path);
 
-        statusEl.textContent = `Loaded ${htmlFiles.length} files from ${owner}/${repo}`;
-        return htmlFiles.length ? htmlFiles : FALLBACK_FILES;
-      } catch (err) {
-        statusEl.textContent = `Using cached file list (${FALLBACK_FILES.length} files)`;
+        return files.length ? files : FALLBACK_FILES;
+      } catch {
         return FALLBACK_FILES;
       }
     }
 
-    function buildGraphData(filePaths) {
+    /**
+     * Semantic Engine:
+     * 1. Fetches the actual HTML file content and parses <h1>, <title>, and <h2> tags.
+     * 2. Detects series prefixes (e.g., "LLMs from zero, Part 1: Foundations...")
+     *    and separates the Series Topic from the specific Lesson Title.
+     * 3. Expands shorthand file names if headers are generic or missing.
+     */
+    async function extractFileSemantics(filePath) {
+      const parts = filePath.split('/');
+      const rawFileName = parts.pop().replace(/\.html$/i, '');
+      const folderPath = parts.join('/');
+      const encodedUrl = filePath.split('/').map(encodeURIComponent).join('/');
+
+      let extractedTitle = '';
+      let subheadings = [];
+
+      try {
+        const res = await fetch(encodedUrl);
+        if (res.ok) {
+          const htmlText = await res.text();
+          const doc = new DOMParser().parseFromString(htmlText, 'text/html');
+
+          // Priority: first <h1> -> <title> -> first <h2>
+          const h1 = doc.querySelector('h1')?.textContent?.trim();
+          const titleTag = doc.querySelector('title')?.textContent?.trim();
+          const h2 = doc.querySelector('h2')?.textContent?.trim();
+
+          // Ignore generic notebook/export titles like "Untitled" or "Notebook"
+          const isValid = (str) => str && !/^(untitled|document|index|notebook)$/i.test(str);
+
+          if (isValid(h1)) extractedTitle = h1;
+          else if (isValid(titleTag)) extractedTitle = titleTag;
+          else if (isValid(h2)) extractedTitle = h2;
+
+          // Collect up to 4 subheadings for semantic context preview
+          subheadings = Array.from(doc.querySelectorAll('h2, h3'))
+            .map(el => el.textContent.trim())
+            .filter(Boolean)
+            .slice(0, 4);
+        }
+      } catch {
+        // Fallback to filename rules if fetch fails locally (CORS)
+      }
+
+      const sourceString = extractedTitle || rawFileName;
+      return normalizeTitleAndSeries(sourceString, rawFileName, folderPath, encodedUrl, subheadings);
+    }
+
+    function normalizeTitleAndSeries(sourceString, rawFileName, folderPath, url, subheadings) {
+      let cleaned = sourceString.replace(/_/g, ': ').replace(/\s+/g, ' ').trim();
+      let seriesTopic = null;
+      let displayLabel = cleaned;
+
+      // Rule 1: Detect "Series Name, Part X: Actual Topic" or "Topic: Subtopic"
+      const seriesRegex = /^(.+?)(?:,\s*|\s+-\s+|\s+)?(?:Part|Ch|Chapter|Module|Section)\s*\d+\s*[:\-–]\s*(.+)$/i;
+      const colonSplit = cleaned.split(/\s*[:\-–]\s*/);
+
+      const seriesMatch = cleaned.match(seriesRegex);
+      if (seriesMatch) {
+        seriesTopic = seriesMatch[1].trim();
+        displayLabel = seriesMatch[2].trim();
+      } else if (colonSplit.length === 2 && colonSplit[0].length < 28) {
+        seriesTopic = colonSplit[0].trim();
+        displayLabel = colonSplit[1].trim();
+      }
+
+      // Rule 2: Expand technical abbreviations if the title came from a raw filename like "KNN_(superv)"
+      if (!seriesMatch && displayLabel === rawFileName.replace(/_/g, ': ')) {
+        // Remove parenthetical tags like (superv) and expand tokens
+        const parenMatch = rawFileName.match(/^([a-zA-Z0-9_-]+?)\s*\(([^)]+)\)$/);
+        if (parenMatch) {
+          const baseKey = parenMatch[1].replace(/_/g, '').toLowerCase();
+          const tagKey = parenMatch[2].toLowerCase();
+          displayLabel = SHORTHAND_MAP[baseKey] || parenMatch[1];
+          if (SHORTHAND_MAP[tagKey]) {
+            seriesTopic = SHORTHAND_MAP[tagKey];
+          }
+        } else {
+          displayLabel = rawFileName
+            .split(/[_\s-]+/)
+            .map(word => {
+              const lower = word.toLowerCase();
+              if (SHORTHAND_MAP[lower]) return SHORTHAND_MAP[lower];
+              return word.charAt(0).toUpperCase() + word.slice(1);
+            })
+            .join(' ');
+        }
+      }
+
+      return {
+        filePath: url,
+        rawFileName,
+        folderPath,
+        seriesTopic,
+        label: displayLabel,
+        subheadings
+      };
+    }
+
+    function buildSemanticGraph(fileSemantics) {
       const nodes = [];
       const links = [];
-      const folderSet = new Map();
+      const hubMap = new Map();
 
-      // Color scale for different folders
-      const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
-
-      // Create Central Root Hub
       const rootId = 'ROOT';
       nodes.push({
         id: rootId,
-        label: 'tech-stuff (Root)',
+        label: 'Knowledge Base',
         type: 'root',
-        group: 'root',
-        radius: 16
+        radius: 17
       });
-      folderSet.set('', rootId);
+      hubMap.set('', rootId);
 
-      filePaths.forEach(filePath => {
-        const parts = filePath.split('/');
-        const fileName = parts.pop();
-        let currentParentId = rootId;
-        let currentPath = '';
+      // Count how many files share the same seriesTopic so we only create a hub when useful
+      const seriesCount = {};
+      fileSemantics.forEach(item => {
+        if (item.seriesTopic) {
+          seriesCount[item.seriesTopic] = (seriesCount[item.seriesTopic] || 0) + 1;
+        }
+      });
 
-        // Create intermediate folder nodes so files in the same folder cluster together
-        parts.forEach(folderName => {
-          currentPath = currentPath ? `${currentPath}/${folderName}` : folderName;
-          if (!folderSet.has(currentPath)) {
-            const folderId = `FOLDER:${currentPath}`;
+      fileSemantics.forEach(item => {
+        let parentId = rootId;
+
+        // 1. Folder Hierarchy Grouping
+        if (item.folderPath) {
+          let currentPath = '';
+          item.folderPath.split('/').forEach(folderName => {
+            currentPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+            if (!hubMap.has(`FOLDER:${currentPath}`)) {
+              const folderId = `FOLDER:${currentPath}`;
+              nodes.push({
+                id: folderId,
+                label: folderName,
+                type: 'folder',
+                radius: 13
+              });
+              links.push({ source: parentId, target: folderId, distance: 95 });
+              hubMap.set(`FOLDER:${currentPath}`, folderId);
+            }
+            parentId = hubMap.get(`FOLDER:${currentPath}`);
+          });
+        }
+
+        // 2. Semantic Series / Topic Hub Grouping (e.g. "LLMs from zero" or "Supervised Learning")
+        if (item.seriesTopic) {
+          const topicKey = `TOPIC:${item.folderPath}/${item.seriesTopic}`;
+          if (!hubMap.has(topicKey)) {
             nodes.push({
-              id: folderId,
-              label: folderName,
-              type: 'folder',
-              group: currentPath,
-              radius: 12
+              id: topicKey,
+              label: item.seriesTopic,
+              type: 'topic',
+              radius: 11
             });
-            links.push({
-              source: currentParentId,
-              target: folderId,
-              distance: 90
-            });
-            folderSet.set(currentPath, folderId);
+            links.push({ source: parentId, target: topicKey, distance: 80 });
+            hubMap.set(topicKey, topicKey);
           }
-          currentParentId = folderSet.get(currentPath);
-        });
+          parentId = hubMap.get(topicKey);
+        }
 
-        // Clean display title for the HTML file
-        const cleanTitle = fileName
-          .replace(/\.html$/i, '')
-          .replace(/_/g, ': ');
-
-        const fileId = `FILE:${filePath}`;
+        // 3. Individual Document Node with optimized semantic title
+        const fileId = `FILE:${item.filePath}`;
         nodes.push({
           id: fileId,
-          label: cleanTitle,
+          label: item.label,
+          rawFileName: item.rawFileName,
+          subheadings: item.subheadings,
+          seriesTopic: item.seriesTopic,
+          url: item.filePath,
           type: 'file',
-          group: currentPath || 'root',
-          url: filePath.split('/').map(encodeURIComponent).join('/'),
-          radius: 8,
-          color: colorScale(currentPath || 'root')
+          radius: 8
         });
 
         links.push({
-          source: currentParentId,
+          source: parentId,
           target: fileId,
           distance: 65
         });
@@ -259,68 +405,94 @@
       return { nodes, links };
     }
 
-    function renderMindMap(data) {
+    function renderGraph(data) {
       const svg = d3.select('#mindmap');
+      const tooltip = d3.select('#tooltip');
       const width = window.innerWidth;
       const height = window.innerHeight;
 
       const container = svg.append('g');
 
-      // Enable Zoom and Pan
-      const zoom = d3.zoom()
-        .scaleExtent([0.2, 4])
-        .on('zoom', (event) => {
-          container.attr('transform', event.transform);
-        });
+      svg.call(
+        d3.zoom()
+          .scaleExtent([0.25, 4])
+          .on('zoom', (e) => container.attr('transform', e.transform))
+      );
 
-      svg.call(zoom);
-
-      // Force Simulation for Mind-Map clustering
       const simulation = d3.forceSimulation(data.nodes)
-        .force('link', d3.forceLink(data.links).id(d => d.id).distance(d => d.distance).strength(0.8))
-        .force('charge', d3.forceManyBody().strength(d => d.type === 'file' ? -180 : -350))
+        .force('link', d3.forceLink(data.links).id(d => d.id).distance(d => d.distance).strength(0.85))
+        .force('charge', d3.forceManyBody().strength(d => d.type === 'file' ? -220 : -380))
         .force('center', d3.forceCenter(width / 2, height / 2))
-        .force('collide', d3.forceCollide().radius(d => d.radius + 28).iterations(2));
+        .force('collide', d3.forceCollide().radius(d => d.radius + 32).iterations(2));
 
-      // Draw Links
       const link = container.append('g')
         .selectAll('line')
         .data(data.links)
         .join('line')
         .attr('class', 'link')
-        .attr('stroke-width', d => d.target.type === 'folder' ? 2.5 : 1.5);
+        .attr('stroke-width', d => d.target.type === 'file' ? 1.5 : 2.5);
 
-      // Draw Nodes
       const node = container.append('g')
         .selectAll('g')
         .data(data.nodes)
         .join('g')
         .attr('class', 'node')
-        .call(d3.drag()
-          .on('start', dragstarted)
-          .on('drag', dragged)
-          .on('end', dragended));
+        .call(
+          d3.drag()
+            .on('start', (event, d) => {
+              if (!event.active) simulation.alphaTarget(0.3).restart();
+              d.fx = d.x;
+              d.fy = d.y;
+            })
+            .on('drag', (event, d) => {
+              d.fx = event.x;
+              d.fy = event.y;
+            })
+            .on('end', (event, d) => {
+              if (!event.active) simulation.alphaTarget(0);
+              d.fx = null;
+              d.fy = null;
+            })
+        );
 
-      // Node Circles
       node.append('circle')
         .attr('r', d => d.radius)
         .attr('fill', d => {
-          if (d.type === 'root') return '#f0883e';
-          if (d.type === 'folder') return '#d29922';
-          return d.color || '#58a6ff';
+          if (d.type === 'root' || d.type === 'folder') return '#f0883e';
+          if (d.type === 'topic') return '#a371f7';
+          return '#58a6ff';
         })
         .attr('stroke', '#0d1117')
         .attr('stroke-width', 2);
 
-      // Node Labels
       node.append('text')
-        .attr('dx', d => d.radius + 6)
+        .attr('dx', d => d.radius + 7)
         .attr('dy', '0.32em')
         .text(d => d.label);
 
-      // Open HTML file on click
+      // Hover preview showing extracted headers and filename context
+      node.on('mouseover', (event, d) => {
+        if (d.type !== 'file') return;
+        let html = `<div class="tt-title">${d.label}</div>`;
+        html += `<div class="tt-sub">File: ${d.rawFileName}.html</div>`;
+        if (d.subheadings && d.subheadings.length > 0) {
+          html += `<div>Key Sections:</div><ul>`;
+          d.subheadings.forEach(h => { html += `<li>${h}</li>`; });
+          html += `</ul>`;
+        }
+        tooltip.html(html).style('opacity', 1);
+      })
+      .on('mousemove', (event) => {
+        tooltip
+          .style('left', (event.pageX + 14) + 'px')
+          .style('top', (event.pageY + 14) + 'px');
+      })
+      .on('mouseout', () => {
+        tooltip.style('opacity', 0);
+      });
+
       node.on('click', (event, d) => {
-        if (event.defaultPrevented) return; // ignore drag
+        if (event.defaultPrevented) return;
         if (d.type === 'file' && d.url) {
           window.location.href = d.url;
         }
@@ -336,48 +508,36 @@
         node.attr('transform', d => `translate(${d.x},${d.y})`);
       });
 
-      // Search / Filter functionality
+      // Search across node labels AND internal subheadings
       document.getElementById('search').addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase().trim();
         node.style('opacity', d => {
-          if (!term || d.type !== 'file') return 1;
-          return d.label.toLowerCase().includes(term) ? 1 : 0.15;
-        });
-        link.style('opacity', d => {
-          if (!term) return 0.7;
-          return (d.target.label && d.target.label.toLowerCase().includes(term)) ? 0.9 : 0.1;
+          if (!term) return 1;
+          const inLabel = d.label.toLowerCase().includes(term);
+          const inSub = (d.subheadings || []).some(h => h.toLowerCase().includes(term));
+          return (inLabel || inSub) ? 1 : 0.15;
         });
       });
 
-      // Handle Window Resize
       window.addEventListener('resize', () => {
         simulation.force('center', d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2));
         simulation.alpha(0.3).restart();
       });
-
-      function dragstarted(event, d) {
-        if (!event.active) simulation.alphaTarget(0.3).restart();
-        d.fx = d.x;
-        d.fy = d.y;
-      }
-
-      function dragged(event, d) {
-        d.fx = event.x;
-        d.fy = event.y;
-      }
-
-      function dragended(event, d) {
-        if (!event.active) simulation.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
-      }
     }
 
-    // Initialize
-    fetchHtmlFiles().then(files => {
-      const graphData = buildGraphData(files);
-      renderMindMap(graphData);
-    });
+    async function init() {
+      const statusEl = document.getElementById('status');
+      const fileList = await fetchHtmlFileList();
+      statusEl.textContent = `Parsing headers from ${fileList.length} HTML files...`;
+
+      const semantics = await Promise.all(fileList.map(extractFileSemantics));
+      const graphData = buildSemanticGraph(semantics);
+
+      statusEl.textContent = `Mapped ${fileList.length} documents into semantic clusters`;
+      renderGraph(graphData);
+    }
+
+    init();
   </script>
 </body>
 </html>
