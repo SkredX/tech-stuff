@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Tech Stuff — Knowledge Graph</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
@@ -10,6 +10,7 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      -webkit-tap-highlight-color: transparent;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -17,32 +18,58 @@
       color: #c9d1d9;
       overflow: hidden;
       width: 100vw;
-      height: 100vh;
+      height: 100dvh;
+      touch-action: none;
     }
+
+    /* Responsive UI Overlay */
     #ui-overlay {
       position: absolute;
-      top: 20px;
-      left: 20px;
+      top: 16px;
+      left: 16px;
       z-index: 10;
-      background: rgba(22, 27, 34, 0.9);
-      backdrop-filter: blur(8px);
-      padding: 18px 20px;
+      background: rgba(22, 27, 34, 0.88);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 16px 18px;
       border-radius: 12px;
       border: 1px solid #30363d;
-      max-width: 340px;
+      width: 330px;
+      max-width: calc(100vw - 32px);
       box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+      transition: all 0.25s ease;
     }
-    h1 {
-      font-size: 1.15rem;
-      font-weight: 600;
-      color: #f0f6fc;
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 6px;
     }
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #f0f6fc;
+    }
+    #fit-btn {
+      background: #21262d;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 4px 9px;
+      font-size: 0.74rem;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    #fit-btn:hover {
+      background: #30363d;
+      border-color: #58a6ff;
+      color: #ffffff;
+    }
     p.subtitle {
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       color: #8b949e;
-      margin-bottom: 12px;
-      line-height: 1.45;
+      margin-bottom: 10px;
+      line-height: 1.4;
     }
     #search {
       width: 100%;
@@ -60,31 +87,64 @@
       box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
     }
     #status {
-      font-size: 0.76rem;
+      font-size: 0.74rem;
       color: #58a6ff;
-      margin-top: 10px;
+      margin-top: 8px;
     }
     #legend {
-      margin-top: 12px;
+      margin-top: 10px;
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      font-size: 0.75rem;
+      font-size: 0.73rem;
       color: #8b949e;
       border-top: 1px solid #21262d;
-      padding-top: 10px;
+      padding-top: 9px;
     }
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
-    .dot {
-      width: 10px;
-      height: 10px;
+    .shape-diamond {
+      width: 9px;
+      height: 9px;
+      transform: rotate(45deg);
+      display: inline-block;
+      border-radius: 1px;
+    }
+    .shape-circle {
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
       display: inline-block;
     }
+
+    /* Mobile-Specific Compact Adjustments */
+    @media (max-width: 640px) {
+      #ui-overlay {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        width: auto;
+        max-width: none;
+        padding: 12px 14px;
+      }
+      p.subtitle {
+        display: none;
+      }
+      #status {
+        display: none;
+      }
+      #legend {
+        margin-top: 8px;
+        padding-top: 8px;
+        gap: 8px;
+        font-size: 0.7rem;
+      }
+    }
+
+    /* Tooltip / Bottom Info Bar on Mobile */
     #tooltip {
       position: absolute;
       pointer-events: none;
@@ -104,16 +164,19 @@
       font-weight: 600;
       color: #f0f6fc;
       margin-bottom: 3px;
-      font-size: 0.88rem;
+      font-size: 0.86rem;
     }
     .tt-meta {
       color: #8b949e;
-      font-size: 0.74rem;
+      font-size: 0.73rem;
     }
+
     svg {
       width: 100vw;
-      height: 100vh;
+      height: 100dvh;
       cursor: grab;
+      touch-action: none;
+      user-select: none;
     }
     svg:active {
       cursor: grabbing;
@@ -130,14 +193,14 @@
     .node {
       cursor: pointer;
     }
-    .node circle {
+    .node-shape {
       transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.2s ease;
     }
-    .node:hover circle {
+    .node:hover .node-shape {
       transform: scale(1.35);
     }
     .node text {
-      font-size: 12.5px;
+      font-size: 12px;
       fill: #c9d1d9;
       pointer-events: none;
       text-shadow: 0 2px 4px #0d1117, 0 -2px 4px #0d1117, 2px 0 4px #0d1117, -2px 0 4px #0d1117;
@@ -152,9 +215,12 @@
 <body>
 
   <div id="ui-overlay">
-    <h1>Semantic Knowledge Map</h1>
-    <p class="subtitle">Fixed radial layout grouped by topic relativity. Hover over any node to highlight its cluster, or click to read.</p>
-    <input type="text" id="search" placeholder="Search notes or topics...">
+    <div class="header-row">
+      <h1>Semantic Knowledge Map</h1>
+      <button id="fit-btn" title="Fit graph to screen">Reset View</button>
+    </div>
+    <p class="subtitle">Scroll or pinch to zoom. Diamonds represent directories/hubs; circles represent HTML notes.</p>
+    <input type="text" id="search" placeholder="Search notes or directories...">
     <div id="status">Loading repository structure...</div>
     <div id="legend"></div>
   </div>
@@ -166,7 +232,6 @@
     const DEFAULT_OWNER = 'skredx';
     const DEFAULT_REPO = 'tech-stuff';
 
-    // Matches your updated repo structure including the LLMs/ folder
     const FALLBACK_FILES = [
       "KNN_(superv).html",
       "LLMs/LLMs from zero, Part 1_ Foundations and the Transformer.html",
@@ -175,11 +240,10 @@
       "camera_calib_notes.html"
     ];
 
-    // Distinct vibrant palette for different knowledge clusters
     const CLUSTER_PALETTE = [
-      "#a371f7", // Purple (e.g. LLMs)
-      "#3fb950", // Green (e.g. Supervised Learning)
-      "#58a6ff", // Blue (e.g. Computer Vision / Calibration)
+      "#a371f7", // Purple
+      "#3fb950", // Green
+      "#58a6ff", // Blue
       "#f78166", // Coral
       "#d29922", // Gold
       "#ff7b72"  // Pink-Red
@@ -225,7 +289,6 @@
       }
     }
 
-    // Zero-network semantic parser: extracts clean titles and categories purely from path & filename context
     function parseFileSemantics(filePath) {
       const parts = filePath.split('/');
       const rawFileName = parts.pop().replace(/\.html$/i, '');
@@ -235,7 +298,6 @@
       let category = folderName;
       let displayTitle = rawFileName.replace(/_/g, ': ').replace(/\s+/g, ' ').trim();
 
-      // 1. Check exact or token shorthand matches (e.g. KNN_(superv) or camera_calib_notes)
       const lowerRaw = rawFileName.toLowerCase();
       if (SHORTHAND_MAP[lowerRaw]) {
         displayTitle = SHORTHAND_MAP[lowerRaw].title;
@@ -252,7 +314,6 @@
         }
       }
 
-      // 2. Strip series prefixes like "LLMs from zero, Part 1: Foundations..."
       const seriesRegex = /^(.+?)(?:,\s*|\s+-\s+|\s+)?(?:Part|Ch|Chapter|Module)\s*(\d+)\s*[:\-–_]\s*(.+)$/i;
       const seriesMatch = displayTitle.match(seriesRegex);
       if (seriesMatch) {
@@ -262,7 +323,6 @@
         category = category || seriesName;
         displayTitle = `Part ${partNum}: ${coreTopic}`;
       } else if (!category) {
-        // Fallback category for standalone root files
         if (lowerRaw.includes('calib') || lowerRaw.includes('camera')) {
           category = 'Computer Vision';
           displayTitle = 'Camera Calibration';
@@ -291,7 +351,7 @@
         if (!categoryMap.has(file.category)) {
           const catNode = {
             name: file.category,
-            type: "category",
+            type: "directory",
             category: file.category,
             children: []
           };
@@ -310,58 +370,101 @@
       return root;
     }
 
-    function renderFixedMindMap(hierarchyData, totalFiles) {
+    // Helper to wrap long node labels into compact multi-line SVG <tspan> elements
+    function wrapTextLabels(selection, maxCharsPerLine) {
+      selection.each(function(d) {
+        const text = d3.select(this);
+        const words = d.data.name.split(/\s+/);
+        text.text(null);
+
+        const xOffset = text.attr('x') || 0;
+        let line = [];
+        let lines = [];
+
+        words.forEach(word => {
+          line.push(word);
+          if (line.join(' ').length > maxCharsPerLine && line.length > 1) {
+            line.pop();
+            lines.push(line.join(' '));
+            line = [word];
+          }
+        });
+        if (line.length > 0) lines.push(line.join(' '));
+
+        const startDy = lines.length > 1 ? -((lines.length - 1) * 0.55) + 0.32 : 0.32;
+        lines.forEach((l, i) => {
+          text.append('tspan')
+            .attr('x', xOffset)
+            .attr('dy', i === 0 ? `${startDy}em` : '1.15em')
+            .text(l);
+        });
+      });
+    }
+
+    function renderFixedMindMap(hierarchyData) {
       const svg = d3.select('#mindmap');
       const tooltip = d3.select('#tooltip');
       const width = window.innerWidth;
       const height = window.innerHeight;
-      const radius = Math.min(width, height) * 0.36;
+      const isMobile = width <= 640;
+
+      // Adjust branch lengths and text wrapping based on device viewport
+      const baseRadius = isMobile
+        ? Math.min(width, height) * 0.44
+        : Math.min(width, height) * 0.36;
+      const maxLabelChars = isMobile ? 20 : 32;
 
       svg.selectAll('*').remove();
 
-      // Center container
-      const g = svg.append('g')
-        .attr('transform', `translate(${width / 2},${height / 2})`);
+      const g = svg.append('g').attr('class', 'graph-Content');
 
-      // Allow smooth canvas pan/zoom while keeping node positions strictly fixed
-      svg.call(
-        d3.zoom()
-          .scaleExtent([0.4, 3])
-          .on('zoom', (e) => g.attr('transform', e.transform))
-          .transform,
-        d3.zoomIdentity.translate(width / 2, height / 2)
-      );
-
-      // Assign a unique color to each top-level category cluster
+      // Assign distinct colors to each directory/category cluster
       const categories = (hierarchyData.children || []).map(d => d.name);
       const colorScale = d3.scaleOrdinal()
         .domain(categories)
         .range(CLUSTER_PALETTE);
 
-      // Populate dynamic color legend
+      // Update Legend with shape indicators (Diamond = Directory, Circle = File)
       const legendEl = document.getElementById('legend');
-      legendEl.innerHTML = categories.map(cat => `
+      const shapeLegend = `
         <div class="legend-item">
-          <span class="dot" style="background:${colorScale(cat)}; box-shadow: 0 0 6px ${colorScale(cat)};"></span>
+          <span class="shape-diamond" style="background:#f0f6fc;"></span>
+          <span>Directory</span>
+        </div>
+        <div class="legend-item">
+          <span class="shape-circle" style="background:#8b949e;"></span>
+          <span>HTML File</span>
+        </div>
+      `;
+      const clusterLegend = categories.map(cat => `
+        <div class="legend-item">
+          <span class="shape-circle" style="background:${colorScale(cat)}; box-shadow: 0 0 6px ${colorScale(cat)};"></span>
           <span>${cat}</span>
         </div>
       `).join('');
+      legendEl.innerHTML = shapeLegend + clusterLegend;
 
-      // Compute deterministic, zero-computation radial tree coordinates
+      // Deterministic Radial Tree with mobile-aware angular spacing
       const root = d3.hierarchy(hierarchyData);
       const treeLayout = d3.tree()
-        .size([2 * Math.PI, radius])
-        .separation((a, b) => (a.parent === b.parent ? 1.3 : 2.2) / (a.depth || 1));
+        .size([2 * Math.PI, baseRadius])
+        .separation((a, b) => (a.parent === b.parent ? 1.4 : 2.4) / (a.depth || 1));
 
       treeLayout(root);
 
-      // Helper to convert (angle, radius) to fixed Cartesian (x, y)
+      // Adjust depth radii so inner directories and outer files have balanced spacing
+      root.each(d => {
+        if (d.depth === 0) d.y = 0;
+        if (d.depth === 1) d.y = baseRadius * 0.45;
+        if (d.depth === 2) d.y = baseRadius;
+      });
+
       const radialPoint = (angle, r) => [
         r * Math.cos(angle - Math.PI / 2),
         r * Math.sin(angle - Math.PI / 2)
       ];
 
-      // Draw curved radial links colored by their cluster
+      // Draw curved links
       const links = g.append('g')
         .selectAll('path')
         .data(root.links())
@@ -385,82 +488,139 @@
           return `translate(${x},${y})`;
         });
 
-      // Node circles
-      nodes.append('circle')
-        .attr('r', d => {
-          if (d.depth === 0) return 15;
-          if (d.depth === 1) return 11;
-          return 8;
-        })
-        .attr('fill', d => {
-          if (d.depth === 0) return '#f0f6fc';
-          return colorScale(d.data.category);
-        })
-        .attr('stroke', '#0d1117')
-        .attr('stroke-width', 2.5);
+      // Render Diamonds for Directories/Root and Circles for Individual Files
+      const diamondGenerator = d3.symbol().type(d3.symbolDiamond);
 
-      // Node text labels positioned outward cleanly
-      nodes.append('text')
-        .attr('dy', '0.32em')
+      nodes.each(function(d) {
+        const nodeGroup = d3.select(this);
+        const fillColor = d.depth === 0 ? '#f0f6fc' : colorScale(d.data.category);
+
+        if (d.data.type === 'root' || d.data.type === 'directory') {
+          // Diamond shape for root and directory nodes
+          const symbolSize = d.depth === 0 ? 360 : 230;
+          nodeGroup.append('path')
+            .attr('class', 'node-shape')
+            .attr('d', diamondGenerator.size(symbolSize)())
+            .attr('fill', fillColor)
+            .attr('stroke', '#0d1117')
+            .attr('stroke-width', 2.5);
+        } else {
+          // Circle shape for individual HTML file nodes
+          nodeGroup.append('circle')
+            .attr('class', 'node-shape')
+            .attr('r', 8.5)
+            .attr('fill', fillColor)
+            .attr('stroke', '#0d1117')
+            .attr('stroke-width', 2.5);
+        }
+      });
+
+      // Position & wrap text labels cleanly
+      const labels = nodes.append('text')
         .attr('x', d => {
           if (d.depth === 0) return 0;
-          return d.x < Math.PI ? 14 : -14;
+          return d.x < Math.PI ? 15 : -15;
         })
-        .attr('y', d => d.depth === 0 ? -24 : 0)
+        .attr('y', d => d.depth === 0 ? -22 : 0)
         .attr('text-anchor', d => {
           if (d.depth === 0) return 'middle';
           return d.x < Math.PI ? 'start' : 'end';
         })
-        .style('font-weight', d => d.depth < 2 ? '600' : '400')
-        .text(d => d.data.name);
+        .style('font-size', isMobile ? '11px' : '12.5px')
+        .style('font-weight', d => d.depth < 2 ? '600' : '400');
 
-      // Interactive Hover Glow & Cluster Highlight
+      wrapTextLabels(labels, maxLabelChars);
+
+      // Enable Desktop Scroll Zoom + Mobile Multi-Touch Pinch Zoom & Pan
+      const zoom = d3.zoom()
+        .scaleExtent([0.2, 4])
+        .on('zoom', (event) => {
+          g.attr('transform', event.transform);
+        });
+
+      svg.call(zoom).on('dblclick.zoom', null);
+
+      // Auto-Fit Function: Calculates exact bounding box of all nodes + labels and fits to screen
+      function fitGraphToScreen(animate = false) {
+        const bounds = g.node().getBBox();
+        if (!bounds.width || !bounds.height) return;
+
+        const overlayRect = document.getElementById('ui-overlay').getBoundingClientRect();
+        const padX = isMobile ? 28 : 64;
+        const topSpace = isMobile ? overlayRect.bottom + 20 : 50;
+        const bottomSpace = 36;
+
+        const availWidth = width - padX * 2;
+        const availHeight = height - topSpace - bottomSpace;
+
+        const scale = Math.min(
+          1.25,
+          availWidth / bounds.width,
+          availHeight / bounds.height
+        );
+
+        const centerX = bounds.x + bounds.width / 2;
+        const centerY = bounds.y + bounds.height / 2;
+
+        const targetX = (width / 2) - centerX * scale;
+        const targetY = topSpace + (availHeight / 2) - centerY * scale;
+
+        const transform = d3.zoomIdentity.translate(targetX, targetY).scale(scale);
+        if (animate) {
+          svg.transition().duration(450).call(zoom.transform, transform);
+        } else {
+          svg.call(zoom.transform, transform);
+        }
+      }
+
+      // Fit immediately on load so default view always shows the full mind map
+      fitGraphToScreen(false);
+      document.getElementById('fit-btn').onclick = () => fitGraphToScreen(true);
+
+      // Interactive Hover Glow
       nodes.on('mouseover', function(event, d) {
         const nodeColor = d.depth === 0 ? '#ffffff' : colorScale(d.data.category);
 
-        // Make hovered node glow brightly
-        d3.select(this).select('circle')
+        d3.select(this).select('.node-shape')
           .style('filter', `drop-shadow(0 0 12px ${nodeColor}) drop-shadow(0 0 4px #ffffff)`);
 
-        // Highlight connected links in the same cluster or direct lineage
         links.classed('highlighted', l =>
           l.target === d || l.source === d || (d.depth === 1 && l.target.parent === d)
         );
 
-        // Show tooltip with context
         if (d.data.type === 'file') {
           tooltip.html(`
             <div class="tt-title" style="color:${nodeColor}">${d.data.name}</div>
-            <div class="tt-meta">Cluster: ${d.data.category}</div>
-            <div class="tt-meta">File: ${d.data.rawPath}</div>
+            <div class="tt-meta">Directory: ${d.data.category}</div>
+            <div class="tt-meta">Click or tap to open document</div>
           `).style('opacity', 1);
-        } else if (d.data.type === 'category') {
+        } else if (d.data.type === 'directory') {
           tooltip.html(`
-            <div class="tt-title" style="color:${nodeColor}">${d.data.name}</div>
-            <div class="tt-meta">${d.children.length} related note(s) in this cluster</div>
+            <div class="tt-title" style="color:${nodeColor}">◆ ${d.data.name}</div>
+            <div class="tt-meta">Directory Hub (${d.children.length} files)</div>
           `).style('opacity', 1);
         }
       })
       .on('mousemove', (event) => {
-        tooltip
-          .style('left', (event.pageX + 15) + 'px')
-          .style('top', (event.pageY + 15) + 'px');
+        const x = Math.min(event.pageX + 14, width - 260);
+        const y = Math.min(event.pageY + 14, height - 90);
+        tooltip.style('left', x + 'px').style('top', y + 'px');
       })
       .on('mouseout', function() {
-        d3.select(this).select('circle').style('filter', null);
+        d3.select(this).select('.node-shape').style('filter', null);
         links.classed('highlighted', false);
         tooltip.style('opacity', 0);
       });
 
-      // Click to open HTML document
+      // Open HTML file on click / tap
       nodes.on('click', (event, d) => {
         if (d.data.type === 'file' && d.data.url) {
           window.location.href = d.data.url;
         }
       });
 
-      // Instant Search Filter with Glow on Matches
-      document.getElementById('search').addEventListener('input', (e) => {
+      // Search & Filter with Glow
+      document.getElementById('search').oninput = (e) => {
         const term = e.target.value.toLowerCase().trim();
 
         nodes.style('opacity', d => {
@@ -472,7 +632,7 @@
           return (selfMatch || childMatch) ? 1 : 0.15;
         });
 
-        nodes.select('circle').style('filter', d => {
+        nodes.select('.node-shape').style('filter', d => {
           if (!term || d.depth === 0) return null;
           const isMatch = d.data.name.toLowerCase().includes(term);
           return isMatch ? `drop-shadow(0 0 10px ${colorScale(d.data.category)})` : null;
@@ -484,7 +644,7 @@
                         (l.target.data.category && l.target.data.category.toLowerCase().includes(term));
           return match ? 0.9 : 0.08;
         });
-      });
+      };
     }
 
     async function init() {
@@ -493,11 +653,13 @@
       const parsedFiles = fileList.map(parseFileSemantics);
       const hierarchyData = buildHierarchyData(parsedFiles);
 
-      statusEl.textContent = `Mapped ${parsedFiles.length} notes across ${hierarchyData.children.length} clusters`;
-      renderFixedMindMap(hierarchyData, parsedFiles.length);
+      statusEl.textContent = `Mapped ${parsedFiles.length} notes across ${hierarchyData.children.length} directories`;
+      renderFixedMindMap(hierarchyData);
 
+      let resizeTimer;
       window.addEventListener('resize', () => {
-        renderFixedMindMap(hierarchyData, parsedFiles.length);
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => renderFixedMindMap(hierarchyData), 150);
       });
     }
 
